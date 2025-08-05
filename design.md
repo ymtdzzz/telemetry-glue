@@ -87,3 +87,143 @@ Only CLI usage is shown as an example, but the same functionality is available a
 - CLI usage
 - Usage from Slack bots, etc.
 - Data integration with LLMs
+
+### 8. Directory Structure
+
+The project follows a modular and extensible directory structure, in line with Go best practices, to maximize maintainability, testability, and clarity:
+
+```
+telemetry-glue/
+├── cmd/
+│   └── telemetry-glue/         # CLI entry point (main.go)
+├── internal/
+│   ├── core/                   # Query integration layer (core logic)
+│   ├── backend/                # Backend abstraction interfaces and implementations
+│   │   ├── newrelic/           # NewRelic backend implementation
+│   │   ├── datadog/            # Datadog backend implementation
+│   │   └── gcp/                # Google Cloud backend implementation
+│   ├── config/                 # Configuration and authentication management
+│   └── util/                   # Utility functions and types
+├── pkg/                        # Public API for use as a library
+├── test/                       # Integration and end-to-end tests, test mocks
+├── scripts/                    # Development/build/CI scripts
+├── .env.example                # Example for authentication/configuration
+├── go.mod
+├── go.sum
+├── README.md
+└── design.md
+```
+
+**Directory roles:**
+- `cmd/telemetry-glue/`: The CLI application's entry point and command routing.
+- `internal/core/`: Core logic for integrating queries and aggregating results from multiple backends.
+- `internal/backend/`: Abstract interfaces for observability backends and their concrete implementations (e.g., NewRelic, Datadog, GCP).
+- `internal/config/`: Handles configuration loading and authentication management.
+- `internal/util/`: Shared utility code.
+- `pkg/`: Public API for use as a Go library (for bots, LLM integration, etc.).
+- `test/`: Integration/E2E tests and test mocks.
+- `scripts/`: Helper scripts for development and CI.
+- `.env.example`: Example environment variables for backend authentication.
+
+This structure ensures that:
+- Adding a new backend only requires implementing the interface in `internal/backend/`.
+- The CLI and library share the same core logic.
+- Configuration and authentication are managed centrally.
+- The codebase is easy to test and extend.
+
+
+### 9. Backend Interface Design
+
+The backend interface abstracts the interaction with each observability backend (such as NewRelic, Datadog, Google Cloud, etc.) and defines a common contract for all supported operations. This enables easy extensibility and consistent integration across different providers.
+
+Key points:
+- All time ranges are represented using Go's `time.Time` type, and ISO8601 strings are parsed at instantiation.
+- Each backend must implement the following interface:
+
+```go
+import "time"
+
+type TimeRange struct {
+    Start time.Time // Start of the range
+    End   time.Time // End of the range
+}
+
+type SearchValuesRequest struct {
+    Attribute string    // e.g. "http.path"
+    Query     string    // e.g. "*user*"
+    TimeRange TimeRange
+}
+
+type SearchValuesResponse struct {
+    Values  []string
+    WebLink string // Link to the relevant search result in the backend UI
+}
+
+type TopTracesRequest struct {
+    Attribute string    // e.g. "http.path"
+    Value     string    // e.g. "/admin/users/new"
+    TimeRange TimeRange
+    Limit     int
+}
+
+type TopTracesResponse struct {
+    Traces  []TraceSummary
+    WebLink string // Link to the search result in the backend UI
+}
+
+type ListSpansRequest struct {
+    TraceID   string
+    TimeRange TimeRange
+}
+
+type ListSpansResponse struct {
+    Spans   []Span
+    WebLink string // Link to the trace in the backend UI
+}
+
+type ListLogsRequest struct {
+    TraceID   string
+    TimeRange TimeRange
+}
+
+type ListLogsResponse struct {
+    Logs    []LogEntry
+    WebLink string // Link to the logs in the backend UI
+}
+
+type TraceSummary struct {
+    TraceID    string
+    StartTime  time.Time
+    Duration   float64 // seconds
+    Attributes map[string]interface{}
+}
+
+type Span struct {
+    SpanID     string
+    TraceID    string
+    Name       string
+    StartTime  time.Time
+    EndTime    time.Time
+    Attributes map[string]interface{}
+}
+
+type LogEntry struct {
+    Timestamp  time.Time
+    TraceID    string
+    SpanID     string
+    Message    string
+    Attributes map[string]interface{}
+}
+
+type Backend interface {
+    Name() string
+
+    SearchValues(req SearchValuesRequest) (SearchValuesResponse, error)
+    TopTraces(req TopTracesRequest) (TopTracesResponse, error)
+    ListSpans(req ListSpansRequest) (ListSpansResponse, error)
+    ListLogs(req ListLogsRequest) (ListLogsResponse, error)
+}
+```
+
+This design ensures that adding a new backend only requires implementing the `Backend` interface, and all core operations (searching values, retrieving top traces, listing spans/logs) are handled in a consistent and type-safe manner.
+
