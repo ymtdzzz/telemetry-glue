@@ -1,6 +1,16 @@
 package backend
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+// Common errors for backend implementations
+var (
+	ErrMissingAPIKey    = errors.New("API key is required")
+	ErrMissingAccountID = errors.New("account ID is required")
+	ErrInvalidAccountID = errors.New("invalid account ID format")
+)
 
 // TimeRange represents a time range for queries.
 type TimeRange struct {
