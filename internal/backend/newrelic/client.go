@@ -1,17 +1,84 @@
 package newrelic
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
+	"github.com/newrelic/newrelic-client-go/v2/pkg/config"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/nerdgraph"
-	"github.com/ymtdzzz/telemetry-glue/internal/backend"
 )
 
-// searchValuesImpl implements the core SearchValues functionality
-func (nr *NewRelicBackend) searchValuesImpl(req backend.SearchValuesRequest) (backend.SearchValuesResponse, error) {
+// Common errors for NewRelic backend
+var (
+	ErrMissingAPIKey    = errors.New("NEW_RELIC_API_KEY is required")
+	ErrMissingAccountID = errors.New("NEW_RELIC_ACCOUNT_ID is required")
+	ErrInvalidAccountID = errors.New("invalid NEW_RELIC_ACCOUNT_ID format")
+)
+
+// init loads .env file if not in production environment
+func init() {
+	if os.Getenv("ENV") != "production" {
+		_ = godotenv.Load()
+	}
+}
+
+// TimeRange represents a time range for NewRelic queries
+type TimeRange struct {
+	Start time.Time
+	End   time.Time
+}
+
+// SearchValuesRequest represents a request to search for attribute values in NewRelic
+type SearchValuesRequest struct {
+	Entity    string // NewRelic entity name or GUID
+	Attribute string // e.g. "http.path"
+	Query     string // e.g. "*user*"
+	TimeRange TimeRange
+}
+
+// Client represents a NewRelic client
+type Client struct {
+	client    nerdgraph.NerdGraph
+	accountID int
+}
+
+// NewClient creates a new NewRelic client
+func NewClient() (*Client, error) {
+	// Get API key from environment variable
+	apiKey := os.Getenv("NEW_RELIC_API_KEY")
+	if apiKey == "" {
+		return nil, ErrMissingAPIKey
+	}
+
+	// Get account ID from environment variable
+	accountIDStr := os.Getenv("NEW_RELIC_ACCOUNT_ID")
+	if accountIDStr == "" {
+		return nil, ErrMissingAccountID
+	}
+
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		return nil, ErrInvalidAccountID
+	}
+
+	// Initialize New Relic client
+	cfg := config.New()
+	cfg.PersonalAPIKey = apiKey
+	client := nerdgraph.New(cfg)
+
+	return &Client{
+		client:    client,
+		accountID: accountID,
+	}, nil
+}
+
+// SearchValues searches for unique values of a specified attribute
+func (c *Client) SearchValues(req SearchValuesRequest) ([]string, string, error) {
 	// Build NRQL query for searching attribute values with pattern matching
 	// Convert wildcard pattern (*user*) to SQL LIKE pattern (%user%)
 	likePattern := strings.ReplaceAll(req.Query, "*", "%")
@@ -41,33 +108,30 @@ func (nr *NewRelicBackend) searchValuesImpl(req backend.SearchValuesRequest) (ba
 		}`
 
 	variables := map[string]interface{}{
-		"accountId": nr.accountID,
+		"accountId": c.accountID,
 		"nrqlQuery": nrqlQuery,
 	}
 
 	// Execute the query
-	resp, err := nr.client.Query(graphqlQuery, variables)
+	resp, err := c.client.Query(graphqlQuery, variables)
 	if err != nil {
-		return backend.SearchValuesResponse{}, fmt.Errorf("failed to execute NerdGraph query: %w", err)
+		return nil, "", fmt.Errorf("failed to execute NerdGraph query: %w", err)
 	}
 
 	// Parse the response
-	values, err := nr.parseSearchValuesResponse(resp, req.Attribute)
+	values, err := c.parseSearchValuesResponse(resp, req.Attribute)
 	if err != nil {
-		return backend.SearchValuesResponse{}, fmt.Errorf("failed to parse response: %w", err)
+		return nil, "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	// Generate web link
-	webLink := generateWebLinkForSearchValues(nr.accountID, req.Attribute, req.Query, req.TimeRange)
+	webLink := c.generateWebLinkForSearchValues(req.Attribute, req.Query, req.TimeRange)
 
-	return backend.SearchValuesResponse{
-		Values:  values,
-		WebLink: webLink,
-	}, nil
+	return values, webLink, nil
 }
 
 // parseSearchValuesResponse parses the NerdGraph response for SearchValues
-func (nr *NewRelicBackend) parseSearchValuesResponse(resp interface{}, attribute string) ([]string, error) {
+func (c *Client) parseSearchValuesResponse(resp interface{}, attribute string) ([]string, error) {
 	// First, assert the response as QueryResponse type
 	queryResp, ok := resp.(nerdgraph.QueryResponse)
 	if !ok {
@@ -107,7 +171,7 @@ func (nr *NewRelicBackend) parseSearchValuesResponse(resp interface{}, attribute
 		if uniqueValues, exists := resultMap[uniqueKey]; exists {
 			if valuesList, ok := uniqueValues.([]interface{}); ok {
 				for _, val := range valuesList {
-					if strVal, err := nr.convertToString(val); err == nil {
+					if strVal, err := c.convertToString(val); err == nil {
 						values = append(values, strVal)
 					}
 				}
@@ -119,7 +183,7 @@ func (nr *NewRelicBackend) parseSearchValuesResponse(resp interface{}, attribute
 }
 
 // convertToString converts various types to string representation
-func (nr *NewRelicBackend) convertToString(value interface{}) (string, error) {
+func (c *Client) convertToString(value interface{}) (string, error) {
 	switch v := value.(type) {
 	case string:
 		return v, nil
@@ -134,4 +198,15 @@ func (nr *NewRelicBackend) convertToString(value interface{}) (string, error) {
 	default:
 		return fmt.Sprintf("%v", v), nil
 	}
+}
+
+// generateWebLinkForSearchValues generates a New Relic UI link for search values
+func (c *Client) generateWebLinkForSearchValues(attribute, query string, timeRange TimeRange) string {
+	// Generate NRQL query for the web link
+	nrqlQuery := fmt.Sprintf("SELECT %s FROM Span WHERE %s LIKE '%%%s%%' SINCE %d minutes ago",
+		attribute, attribute, query, int(time.Since(timeRange.Start).Minutes()))
+
+	// New Relic query link format
+	return fmt.Sprintf("https://one.newrelic.com/nr1-core?account=%d&filters=%%7B%%22query%%22%%3A%%22%s%%22%%7D",
+		c.accountID, nrqlQuery)
 }

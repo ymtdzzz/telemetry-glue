@@ -4,17 +4,18 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/newrelic"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "telemetry-glue",
 	Short: "A unified interface for observability backends",
-	Long: `Telemetry Glue provides a unified interface to query data from various
-observability backends like New Relic, Datadog, and others.
+	Long: `Telemetry Glue provides backend-specific commands to query data from various
+observability backends like New Relic, Google Cloud, Datadog, and others.
 
-You can search for attribute values, get top traces, list spans, and more
-across different backends using the same command-line interface.`,
+Each backend has its own subcommand with vendor-specific arguments and concepts,
+while maintaining consistent output formats for downstream processing.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -26,7 +27,6 @@ func Execute() {
 }
 
 func init() {
-	// Global flags
-	rootCmd.PersistentFlags().StringP("backend", "b", "", "Backend to use (required)")
-	rootCmd.MarkPersistentFlagRequired("backend")
+	// Add backend-specific subcommands
+	rootCmd.AddCommand(newrelic.NewRelicCmd())
 }

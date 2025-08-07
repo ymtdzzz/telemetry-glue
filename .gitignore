@@ -2,6 +2,7 @@
 .env
 
 # Build outputs
+bin/
 /telemetry-glue
 dist/
 build/

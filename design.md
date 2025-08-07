@@ -2,26 +2,24 @@
 
 ## Overview
 
-telemetry-glue is a library and CLI tool for querying telemetry data such as traces and logs without being dependent on specific observability backends like NewRelic, Datadog, or Google Cloud.
+telemetry-glue is a library and CLI tool for querying telemetry data such as traces and logs across different observability backends like NewRelic, Google Cloud, Datadog, etc.
 
-The entry point is a trace. The tool retrieves information such as logs that match a given trace ID across multiple backends.
+The tool provides backend-specific commands that handle the unique concepts and APIs of each vendor (e.g., entities in NewRelic, projects in Google Cloud) while maintaining consistent output formats for downstream processing.
 
 ## Usage
 
-For example, the CLI can be used as follows:
+The CLI uses subcommands for each backend vendor to handle vendor-specific arguments and concepts. Examples below show the general structure, but specific arguments and options are subject to change:
 
 ```sh
-# Retrieve a list of valid paths by partial match (wildcard fuzzy search)
-telemetry-glue search values "http.path=*user*" --from new_relic --range "2025-08-01T12:00:00+09:00,2025-08-02T00:00:00+09:00"
+# NewRelic examples (arguments are subject to change)
+telemetry-glue newrelic search-values --entity my-app --attribute "http.method" --query "*users*" --range "2025-08-01T12:00:00+09:00,2025-08-02T00:00:00+09:00"
 # output =>
 # available values:
-#   - /admin/users/new
-#   - /user/:id
+#   - GET
+#   - POST
 #   - ...
 
-# Query based on the path list (exact value specified)
-# Output is the top 5 by duration, and also returns a link to display the search results in the Web UI, allowing the user to continue searching on the web
-telemetry-glue top traces "http.path=/admin/users/new" --from new_relic --range "2025-08-01T12:00:00+09:00,2025-08-02T00:00:00+09:00"
+telemetry-glue newrelic top-traces --entity my-app --attribute "http.path" --value "/admin/users/new" --range "..."
 # output =>
 # result link: https://one.newrelic....
 # TOP 5 (duration):
@@ -29,85 +27,94 @@ telemetry-glue top traces "http.path=/admin/users/new" --from new_relic --range 
 #   - ... {trace_id} -- 2.8s
 #   - ...
 
-# Query detailed span information based on a specified trace ID (output: CSV, JSON, etc. and a web link to the relevant trace)
-telemetry-glue list spans --trace {trace_id} --from new_relic --range "2025-08-01T12:00:00+09:00,2025-08-02T00:00:00+09:00"
+# Google Cloud examples (arguments are subject to change)
+telemetry-glue googlecloud search-values --project my-project --attribute "http.method" --query "*users*" --range "..."
 
-# Query log information in another backend based on a specified trace ID (output: CSV, JSON, etc. and a web link to the relevant log)
-telemetry-glue list logs --trace {trace_id} --from cloud_logging --range "2025-08-01T12:00:00+09:00,2025-08-02T00:00:00+09:00"
+telemetry-glue googlecloud list-spans --project my-project --trace {trace_id} --range "..."
 ```
 
-For subcommands under the `list` command, the output is data such as CSV or JSON, except for web links. This is intended for input to LLMs or further processing by programs. If you want to check the information in a more user-friendly format, you can access it via the provided web link.
+All commands output structured data (JSON, CSV, etc.) along with web links to the corresponding backend UI for further investigation. This design facilitates integration with LLMs, automation tools, and data processing pipelines.
 
-Only CLI usage is shown as an example, but the same functionality is available as a library. By using it as a library, you can, for example, interactively explore traces via a Slack bot and send search results to an LLM for analysis.
+The same functionality is available as a library for integration with bots, automation systems, and other tools.
 
 ## Design
 
 ### 1. Overall Architecture
 
-- An interface layer abstracts each observability backend (NewRelic, Datadog, Google Cloud, etc.), allowing pluggable backend-specific implementations.
-- A query integration layer receives user queries (trace ID, path, etc.), queries multiple backends in parallel, and integrates the results.
-- The core logic is implemented as a library, and the CLI is a wrapper, making it reusable from other tools (such as Slack bots).
+- **Backend-specific implementations**: Each observability backend (NewRelic, Google Cloud, Datadog, etc.) has its own subcommand implementation that handles vendor-specific concepts and APIs.
+- **Minimal abstraction**: Common functionality (output formatting, configuration management) is shared, but vendor-specific logic is encapsulated within each backend's implementation.
+- **Library-first design**: Core logic is implemented as a library with CLI as a wrapper, enabling reuse in bots, automation tools, and other integrations.
 
-### 2. Feature-specific Design
+### 2. Backend-specific Design
 
-- **search values**  
-  Retrieves a list of values for a specified attribute (e.g., http.path) using wildcards or partial matches. Absorbs differences in search APIs for each backend.
-- **top traces**  
-  Filters by specified path, etc., and retrieves the top N traces by duration. Also attaches a Web UI link to the search results.
-- **list spans / list logs**  
-  Retrieves spans or logs based on a trace ID. Output format can be selected as CSV/JSON. Also attaches a web link.
+- **Vendor-specific subcommands**: Each backend has its own subcommand namespace (e.g., `newrelic`, `googlecloud`) that handles vendor-specific concepts and arguments.
+- **Flexible argument handling**: Commands support both common arguments (e.g., `--attribute`, `--query`, `--range`) and vendor-specific arguments (e.g., `--entity` for NewRelic, `--project` for Google Cloud).
+- **Consistent output**: All backends produce structured output (JSON, CSV) with web links, regardless of internal API differences.
 
-### 3. Extensibility & Maintainability
+### 3. Feature Categories
 
-- To add a new backend, simply implement the abstract interface.
-- Backend authentication information and endpoints are managed via configuration files/environment variables.
-- The backend layer is designed to be mockable, making unit and integration testing easy.
+- **search-values**: Retrieves available values for specified attributes using wildcards or partial matches
+- **top-traces**: Finds top traces by duration or other metrics with filtering capabilities
+- **list-spans**: Retrieves detailed span information for specific traces
+- **list-logs**: Retrieves log entries associated with specific traces
 
-### 4. CLI Design
+### 4. Extensibility & Maintainability
 
-- Example command structure:
-  - telemetry-glue search values ...
-  - telemetry-glue top traces ...
-  - telemetry-glue list spans ...
-  - telemetry-glue list logs ...
-- Common options:  
-  --from (specify backend), --range (specify time range), --output (specify output format), --trace (specify trace ID), etc.
+- Adding a new backend requires implementing vendor-specific commands and API integration within the new backend's namespace.
+- Authentication and configuration are managed per backend through environment variables or configuration files.
+- Each backend implementation can be tested independently with vendor-specific mocks.
 
-### 5. Library API Design
+### 5. CLI Design
 
-- Provides the same functionality as the CLI as functions/classes.
-- Return values are structured data (lists, dictionaries, etc.) plus web links.
+- **Subcommand structure** (arguments subject to change):
+  - `telemetry-glue newrelic search-values ...`
+  - `telemetry-glue googlecloud top-traces ...`
+  - `telemetry-glue newrelic list-spans ...`
+  - etc.
+- **Common arguments**: `--range`, `--output`, `--attribute`, `--query`
+- **Vendor-specific arguments**: `--entity` (NewRelic), `--project` (Google Cloud), etc.
 
-### 6. Security & Authentication
+### 6. Library API Design
 
-- API keys and authentication information for each backend are managed securely (using .env files or secret management services is recommended).
+- Provides the same functionality as CLI commands through programmatic interfaces
+- Each backend exposes its own API methods that handle vendor-specific concepts
+- Return values are structured data with web links for UI navigation
+- Designed for integration with automation tools, bots, and data processing pipelines
 
-### 7. Example Use Cases
+### 7. Security & Authentication
 
-- CLI usage
-- Usage from Slack bots, etc.
-- Data integration with LLMs
+- API keys and authentication information for each backend are managed securely through environment variables or dedicated configuration files
+- Each backend handles its own authentication requirements independently
 
-### 8. Directory Structure
+### 8. Example Use Cases
 
-The project follows a modular and extensible directory structure, in line with Go best practices, to maximize maintainability, testability, and clarity:
+- CLI-based telemetry data exploration and analysis
+- Integration with Slack bots and other notification systems
+- Data pipeline integration with LLMs and analytics tools
+- Automated monitoring and alerting workflows
+
+### 9. Directory Structure
+
+The project structure is organized around backend-specific implementations while maintaining shared components:
 
 ```
 telemetry-glue/
 ├── cmd/
-│   └── telemetry-glue/         # CLI entry point (main.go)
+│   └── telemetry-glue/         # CLI entry point
+│       ├── main.go             # Main CLI application
+│       ├── newrelic/           # NewRelic-specific commands
+│       ├── googlecloud/        # Google Cloud-specific commands
+│       └── common/             # Shared CLI utilities (flags, output formatting)
 ├── internal/
-│   ├── core/                   # Query integration layer (core logic)
-│   ├── backend/                # Backend abstraction interfaces and implementations
-│   │   ├── newrelic/           # NewRelic backend implementation
-│   │   ├── datadog/            # Datadog backend implementation
-│   │   └── gcp/                # Google Cloud backend implementation
-│   ├── config/                 # Configuration and authentication management
-│   └── util/                   # Utility functions and types
-├── pkg/                        # Public API for use as a library
-├── test/                       # Integration and end-to-end tests, test mocks
-├── scripts/                    # Development/build/CI scripts
-├── .env.example                # Example for authentication/configuration
+│   ├── backend/                # Backend-specific implementations
+│   │   ├── newrelic/           # NewRelic API integration and logic
+│   │   └── googlecloud/        # Google Cloud API integration and logic
+│   ├── output/                 # Common output formatting (JSON, CSV, etc.)
+│   └── config/                 # Configuration and authentication management
+├── pkg/                        # Public API for library usage
+├── test/                       # Tests and mocks
+├── scripts/                    # Development and CI scripts
+├── .env.example                # Example environment variables
 ├── go.mod
 ├── go.sum
 ├── README.md
@@ -115,115 +122,24 @@ telemetry-glue/
 ```
 
 **Directory roles:**
-- `cmd/telemetry-glue/`: The CLI application's entry point and command routing.
-- `internal/core/`: Core logic for integrating queries and aggregating results from multiple backends.
-- `internal/backend/`: Abstract interfaces for observability backends and their concrete implementations (e.g., NewRelic, Datadog, GCP).
-- `internal/config/`: Handles configuration loading and authentication management.
-- `internal/util/`: Shared utility code.
-- `pkg/`: Public API for use as a Go library (for bots, LLM integration, etc.).
-- `test/`: Integration/E2E tests and test mocks.
-- `scripts/`: Helper scripts for development and CI.
-- `.env.example`: Example environment variables for backend authentication.
 
-This structure ensures that:
-- Adding a new backend only requires implementing the interface in `internal/backend/`.
-- The CLI and library share the same core logic.
-- Configuration and authentication are managed centrally.
-- The codebase is easy to test and extend.
+- `cmd/telemetry-glue/`: CLI application entry point and backend-specific command implementations
+- `internal/backend/`: Backend-specific API integrations and business logic
+- `internal/output/`: Shared output formatting utilities (JSON, CSV conversion, web link generation)
+- `internal/config/`: Configuration loading and authentication management
+- `pkg/`: Public library API for programmatic usage
+- `test/`: Backend-specific tests and shared test utilities
 
+This structure enables:
 
-### 9. Backend Interface Design
+- Independent development and testing of each backend
+- Shared utilities for common operations (output formatting, configuration)
+- Clear separation between CLI commands and backend logic
+- Easy addition of new backends without affecting existing implementations
 
-The backend interface abstracts the interaction with each observability backend (such as NewRelic, Datadog, Google Cloud, etc.) and defines a common contract for all supported operations. This enables easy extensibility and consistent integration across different providers.
+### 10. Implementation Notes
 
-Key points:
-- All time ranges are represented using Go's `time.Time` type, and ISO8601 strings are parsed at instantiation.
-- Each backend must implement the following interface:
-
-```go
-import "time"
-
-type TimeRange struct {
-    Start time.Time // Start of the range
-    End   time.Time // End of the range
-}
-
-type SearchValuesRequest struct {
-    Attribute string    // e.g. "http.path"
-    Query     string    // e.g. "*user*"
-    TimeRange TimeRange
-}
-
-type SearchValuesResponse struct {
-    Values  []string
-    WebLink string // Link to the relevant search result in the backend UI
-}
-
-type TopTracesRequest struct {
-    Attribute string    // e.g. "http.path"
-    Value     string    // e.g. "/admin/users/new"
-    TimeRange TimeRange
-    Limit     int
-}
-
-type TopTracesResponse struct {
-    Traces  []TraceSummary
-    WebLink string // Link to the search result in the backend UI
-}
-
-type ListSpansRequest struct {
-    TraceID   string
-    TimeRange TimeRange
-}
-
-type ListSpansResponse struct {
-    Spans   []Span
-    WebLink string // Link to the trace in the backend UI
-}
-
-type ListLogsRequest struct {
-    TraceID   string
-    TimeRange TimeRange
-}
-
-type ListLogsResponse struct {
-    Logs    []LogEntry
-    WebLink string // Link to the logs in the backend UI
-}
-
-type TraceSummary struct {
-    TraceID    string
-    StartTime  time.Time
-    Duration   float64 // seconds
-    Attributes map[string]interface{}
-}
-
-type Span struct {
-    SpanID     string
-    TraceID    string
-    Name       string
-    StartTime  time.Time
-    EndTime    time.Time
-    Attributes map[string]interface{}
-}
-
-type LogEntry struct {
-    Timestamp  time.Time
-    TraceID    string
-    SpanID     string
-    Message    string
-    Attributes map[string]interface{}
-}
-
-type Backend interface {
-    Name() string
-
-    SearchValues(req SearchValuesRequest) (SearchValuesResponse, error)
-    TopTraces(req TopTracesRequest) (TopTracesResponse, error)
-    ListSpans(req ListSpansRequest) (ListSpansResponse, error)
-    ListLogs(req ListLogsRequest) (ListLogsResponse, error)
-}
-```
-
-This design ensures that adding a new backend only requires implementing the `Backend` interface, and all core operations (searching values, retrieving top traces, listing spans/logs) are handled in a consistent and type-safe manner.
-
+- **Minimal shared interfaces**: Unlike traditional abstraction layers, this design minimizes shared interfaces to only essential common operations (output formatting, configuration management).
+- **Backend autonomy**: Each backend implementation has full autonomy over its API integration, data structures, and vendor-specific logic.
+- **Shared utilities**: Common functionality like JSON/CSV formatting, web link generation, and configuration loading is shared across backends.
+- **Independent evolution**: Backends can evolve independently without affecting other implementations, allowing for vendor-specific optimizations and feature support.

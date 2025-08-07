@@ -8,6 +8,7 @@ A unified interface for querying telemetry data such as traces and logs across m
 - **CLI & Library**: Use as a command-line tool or Go library
 - **Multiple Backends**: Support for NewRelic (with more backends coming)
 - **Search Values**: Find unique attribute values with wildcard support
+- **Test Tools**: OpenTelemetry test trace sender for validation
 - **Future Features**: Top traces, span lists, log queries (coming soon)
 
 ## Setup
@@ -26,6 +27,9 @@ Edit `.env` with your actual values:
 # New Relic API configuration
 NEW_RELIC_API_KEY=your_api_key_here
 NEW_RELIC_ACCOUNT_ID=your_account_id_here
+
+# OpenTelemetry configuration (for otel-test-sender)
+NEW_RELIC_OTLP_ENDPOINT=https://otlp.nr-data.net:4318/v1/traces
 
 # Environment (production/development/staging)
 ENV=development
@@ -46,13 +50,31 @@ ENV=development
 # Build the CLI
 go build ./cmd/telemetry-glue
 
-# Search for attribute values
-./telemetry-glue search-values --backend newrelic --attribute http.path --query "*user*" --since 1h
+# Search for attribute values with NewRelic
+./telemetry-glue newrelic search-values --entity "your-app" --attribute http.path --query "*user*" --since 1h
 
 # Get help
 ./telemetry-glue --help
-./telemetry-glue search-values --help
+./telemetry-glue newrelic --help
+./telemetry-glue newrelic search-values --help
 ```
+
+### Test Trace Sender
+
+Send test OpenTelemetry traces to NewRelic for validation:
+
+```bash
+# Build the test sender
+go build -o bin/otel-test-sender cmd/otel-test-sender/main.go
+
+# Set your NewRelic API key
+export NEW_RELIC_API_KEY="your-api-key"
+
+# Send test traces
+./bin/otel-test-sender
+```
+
+For detailed usage instructions, see [cmd/otel-test-sender/README.md](cmd/otel-test-sender/README.md).
 
 ### Library
 
@@ -98,19 +120,22 @@ func main() {
 
 ```
 telemetry-glue/
-├── cmd/telemetry-glue/         # CLI entry point
-├── internal/core/              # Query integration layer (core logic)
-├── internal/backend/           # Backend abstraction interfaces/implementations
-├── pkg/telemetryglue/          # Public API for use as a library
+├── cmd/
+│   ├── telemetry-glue/         # Main CLI entry point
+│   └── otel-test-sender/       # OpenTelemetry test trace sender
+├── internal/
+│   ├── backend/newrelic/       # NewRelic backend implementation
+│   └── output/                 # Output formatting utilities
 ├── .env.example                # Example environment variables
 └── README.md
 ```
 
 ### Adding New Backends
 
-1. Create a new directory under `internal/backend/`
-2. Implement the `Backend` interface defined in `internal/backend/interface.go`
-3. Add the backend to the factory functions
+1. Create a new subdirectory under `cmd/telemetry-glue/`
+2. Implement vendor-specific commands and flags
+3. Add the new subcommand to the root command
+4. Create backend client in `internal/backend/`
 
 ### Security
 
