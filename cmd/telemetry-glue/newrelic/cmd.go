@@ -16,6 +16,7 @@ These commands use NewRelic-specific concepts like entities and accounts.`,
 	// Add subcommands
 	cmd.AddCommand(SearchValuesCmd())
 	cmd.AddCommand(TopTracesCmd())
+	cmd.AddCommand(SpansCmd())
 
 	return cmd
 }

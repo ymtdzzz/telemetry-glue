@@ -9,8 +9,9 @@ A unified interface for querying telemetry data such as traces and logs across m
 - **Multiple Backends**: Support for NewRelic (with more backends coming)
 - **Search Values**: Find unique attribute values with wildcard support
 - **Top Traces**: Find top traces by duration for specific attribute values
+- **Spans**: Get all spans within a specific trace for detailed analysis
 - **Test Tools**: OpenTelemetry test trace sender for validation
-- **Future Features**: Span lists, log queries (coming soon)
+- **Future Features**: Log queries (coming soon)
 
 ## Setup
 
@@ -57,11 +58,15 @@ go build ./cmd/telemetry-glue
 # Find top traces for a specific attribute value
 ./telemetry-glue newrelic top-traces --entity "your-app" --attribute http.path --value "/api/users" --since 1h
 
+# Get all spans for a specific trace
+./telemetry-glue newrelic spans --trace-id "d8a60536187fa0927e45911f8c0dd64b" --since 1h
+
 # Get help
 ./telemetry-glue --help
 ./telemetry-glue newrelic --help
 ./telemetry-glue newrelic search-values --help
 ./telemetry-glue newrelic top-traces --help
+./telemetry-glue newrelic spans --help
 ```
 
 ### Test Trace Sender

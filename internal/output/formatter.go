@@ -40,14 +40,7 @@ type TopTracesResult struct {
 }
 
 // Span represents a span for output
-type Span struct {
-	SpanID     string                 `json:"span_id"`
-	TraceID    string                 `json:"trace_id"`
-	Name       string                 `json:"name"`
-	StartTime  time.Time              `json:"start_time"`
-	EndTime    time.Time              `json:"end_time"`
-	Attributes map[string]interface{} `json:"attributes,omitempty"`
-}
+type Span map[string]interface{}
 
 // SpansResult represents spans output
 type SpansResult struct {
@@ -214,41 +207,142 @@ func printTopTracesCSV(result TopTracesResult) error {
 }
 
 func printSpansTable(result SpansResult) error {
-	fmt.Printf("Found %d spans:\n", len(result.Spans))
-	for _, span := range result.Spans {
-		duration := span.EndTime.Sub(span.StartTime)
-		fmt.Printf("  %s: %s (%s - %s) %.3fs\n",
-			span.SpanID,
-			span.Name,
-			span.StartTime.Format("15:04:05.000"),
-			span.EndTime.Format("15:04:05.000"),
-			duration.Seconds())
+	fmt.Printf("Found %d spans:\n\n", len(result.Spans))
+
+	if len(result.Spans) == 0 {
+		fmt.Println("No spans found.")
+		return nil
 	}
+
+	for i, span := range result.Spans {
+		fmt.Printf("=== Span %d ===\n", i+1)
+
+		// Sort keys for consistent output
+		var keys []string
+		for key := range span {
+			keys = append(keys, key)
+		}
+
+		// Simple alphabetical sort
+		for i := 0; i < len(keys); i++ {
+			for j := i + 1; j < len(keys); j++ {
+				if keys[i] > keys[j] {
+					keys[i], keys[j] = keys[j], keys[i]
+				}
+			}
+		}
+
+		// Print all key-value pairs
+		for _, key := range keys {
+			value := span[key]
+
+			// Format different types appropriately
+			var valueStr string
+			switch v := value.(type) {
+			case string:
+				valueStr = v
+			case float64:
+				// Special formatting for timestamp
+				if key == "timestamp" {
+					valueStr = fmt.Sprintf("%.0f (%s)", v, time.Unix(int64(v/1000), 0).Format("2006-01-02 15:04:05"))
+				} else if key == "duration.ms" {
+					valueStr = fmt.Sprintf("%.3f ms", v)
+				} else {
+					valueStr = fmt.Sprintf("%.6g", v)
+				}
+			case bool:
+				valueStr = fmt.Sprintf("%t", v)
+			case nil:
+				valueStr = "<nil>"
+			default:
+				valueStr = fmt.Sprintf("%v", v)
+			}
+
+			// Truncate very long values but show they're truncated
+			if len(valueStr) > 100 {
+				valueStr = valueStr[:97] + "..."
+			}
+
+			fmt.Printf("  %-30s: %s\n", key, valueStr)
+		}
+
+		if i < len(result.Spans)-1 {
+			fmt.Println()
+		}
+	}
+
 	if result.WebLink != "" {
 		fmt.Printf("\nView in UI: %s\n", result.WebLink)
 	}
 	return nil
 }
-
 func printSpansCSV(result SpansResult) error {
 	writer := csv.NewWriter(os.Stdout)
 	defer writer.Flush()
 
 	// Write header
-	if err := writer.Write([]string{"span_id", "trace_id", "name", "start_time", "end_time", "duration_seconds"}); err != nil {
+	if err := writer.Write([]string{"span_id", "trace_id", "name", "parent_id", "timestamp", "duration_ms", "service_name", "operation", "resource"}); err != nil {
 		return err
 	}
 
 	// Write spans
 	for _, span := range result.Spans {
-		duration := span.EndTime.Sub(span.StartTime)
+		// Extract values with type assertions and provide defaults using correct field names
+		spanID := ""
+		if id, ok := span["id"].(string); ok {
+			spanID = id
+		}
+
+		traceID := ""
+		if id, ok := span["trace.id"].(string); ok {
+			traceID = id
+		}
+
+		name := ""
+		if n, ok := span["name"].(string); ok {
+			name = n
+		}
+
+		parentID := ""
+		if pid, ok := span["parent.id"].(string); ok {
+			parentID = pid
+		}
+
+		timestamp := ""
+		if ts, ok := span["timestamp"].(float64); ok {
+			timestamp = time.Unix(int64(ts/1000), 0).Format(time.RFC3339Nano)
+		}
+
+		duration := ""
+		if d, ok := span["duration.ms"].(float64); ok {
+			duration = strconv.FormatFloat(d, 'f', 3, 64)
+		}
+
+		serviceName := ""
+		if sn, ok := span["service.name"].(string); ok {
+			serviceName = sn
+		}
+
+		operation := ""
+		if op, ok := span["operation.name"].(string); ok {
+			operation = op
+		}
+
+		resource := ""
+		if res, ok := span["resource.name"].(string); ok {
+			resource = res
+		}
+
 		if err := writer.Write([]string{
-			span.SpanID,
-			span.TraceID,
-			span.Name,
-			span.StartTime.Format(time.RFC3339Nano),
-			span.EndTime.Format(time.RFC3339Nano),
-			strconv.FormatFloat(duration.Seconds(), 'f', 6, 64),
+			spanID,
+			traceID,
+			name,
+			parentID,
+			timestamp,
+			duration,
+			serviceName,
+			operation,
+			resource,
 		}); err != nil {
 			return err
 		}

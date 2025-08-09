@@ -34,9 +34,9 @@ func main() {
 	}
 
 	// Get NewRelic configuration from environment variables
-	apiKey := os.Getenv("NEW_RELIC_API_KEY")
+	apiKey := os.Getenv("NEW_RELIC_INGEST_API_KEY")
 	if apiKey == "" {
-		log.Fatal("NEW_RELIC_API_KEY environment variable is required")
+		log.Fatal("NEW_RELIC_INGEST_API_KEY environment variable is required")
 	}
 
 	endpoint := os.Getenv("NEW_RELIC_OTLP_ENDPOINT")

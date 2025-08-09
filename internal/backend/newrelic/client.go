@@ -50,6 +50,12 @@ type TopTracesRequest struct {
 	TimeRange TimeRange
 }
 
+// SpansRequest represents a request to search for spans in NewRelic
+type SpansRequest struct {
+	TraceID   string // Trace ID to get spans from
+	TimeRange TimeRange
+}
+
 // TraceInfo represents information about a trace
 type TraceInfo struct {
 	TraceID     string
@@ -58,6 +64,9 @@ type TraceInfo struct {
 	SpanCount   int
 	StartTime   time.Time
 }
+
+// SpanInfo represents information about a span
+type SpanInfo map[string]interface{}
 
 // Client represents a NewRelic client
 type Client struct {
@@ -208,6 +217,119 @@ func (c *Client) SearchTopTraces(req TopTracesRequest) ([]TraceInfo, string, err
 	webLink := c.generateWebLinkForTopTraces(req.Attribute, req.Value, req.TimeRange)
 
 	return traces, webLink, nil
+}
+
+// SearchSpans searches for all spans within a specific trace
+func (c *Client) SearchSpans(req SpansRequest) ([]SpanInfo, string, error) {
+	// Calculate time range in minutes from current time
+	timeSinceStart := time.Since(req.TimeRange.Start).Minutes()
+	timeSinceEnd := time.Since(req.TimeRange.End).Minutes()
+
+	// Build NRQL query to get all spans for the trace
+	nrqlQuery := fmt.Sprintf(`
+		SELECT * 
+		FROM Span 
+		WHERE trace.id = '%s' 
+		SINCE %d minutes ago UNTIL %d minutes ago 
+		ORDER BY timestamp ASC`,
+		req.TraceID,
+		int(timeSinceStart),
+		int(timeSinceEnd),
+	)
+
+	// Build GraphQL query
+	graphqlQuery := `
+		query($accountId: Int!, $nrqlQuery: Nrql!) {
+			actor {
+				account(id: $accountId) {
+					nrql(query: $nrqlQuery, timeout: 30) {
+						results
+					}
+				}
+			}
+		}`
+
+	variables := map[string]interface{}{
+		"accountId": c.accountID,
+		"nrqlQuery": nrqlQuery,
+	}
+
+	// Execute the query
+	resp, err := c.client.Query(graphqlQuery, variables)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to execute NerdGraph query: %w", err)
+	}
+
+	// Parse the response
+	spans, err := c.parseSpansResponse(resp)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	// Generate web link
+	webLink := c.generateWebLinkForSpans(req.TraceID, req.TimeRange)
+
+	return spans, webLink, nil
+}
+
+// parseSpansResponse parses the NerdGraph response for SearchSpans
+func (c *Client) parseSpansResponse(resp interface{}) ([]SpanInfo, error) {
+	// First, assert the response as QueryResponse type
+	queryResp, ok := resp.(nerdgraph.QueryResponse)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type: %T", resp)
+	}
+
+	// Parse the Actor field as map[string]interface{}
+	actor, ok := queryResp.Actor.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("actor not found in response")
+	}
+
+	account, ok := actor["account"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("account not found in response")
+	}
+
+	nrql, ok := account["nrql"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("nrql not found in response")
+	}
+
+	results, ok := nrql["results"].([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("results not found in response")
+	}
+
+	var spans []SpanInfo
+
+	for _, result := range results {
+		resultMap, ok := result.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Create SpanInfo as a map containing all the data from NewRelic
+		span := make(SpanInfo)
+		for key, value := range resultMap {
+			span[key] = value
+		}
+
+		spans = append(spans, span)
+	}
+
+	return spans, nil
+}
+
+// generateWebLinkForSpans generates a New Relic UI link for spans
+func (c *Client) generateWebLinkForSpans(traceID string, timeRange TimeRange) string {
+	// Generate NRQL query for the web link
+	nrqlQuery := fmt.Sprintf(`SELECT * FROM Span WHERE trace.id = '%s' SINCE %d minutes ago ORDER BY timestamp ASC`,
+		traceID, int(time.Since(timeRange.Start).Minutes()))
+
+	// New Relic query link format
+	return fmt.Sprintf("https://one.newrelic.com/nr1-core?account=%d&filters=%%7B%%22query%%22%%3A%%22%s%%22%%7D",
+		c.accountID, nrqlQuery)
 }
 
 // parseTopTracesResponse parses the NerdGraph response for SearchTopTraces
