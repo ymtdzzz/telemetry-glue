@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/gcp"
 	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/newrelic"
 )
 
@@ -29,4 +30,5 @@ func Execute() {
 func init() {
 	// Add backend-specific subcommands
 	rootCmd.AddCommand(newrelic.NewRelicCmd())
+	rootCmd.AddCommand(gcp.GCPCmd())
 }
