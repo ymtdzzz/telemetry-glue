@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"cloud.google.com/go/vertexai/genai"
+	"google.golang.org/genai"
 )
 
 // LLMProvider interface for different LLM providers
@@ -25,8 +25,14 @@ type VertexAIProvider struct {
 func NewVertexAIProvider(projectID, location, model string) (*VertexAIProvider, error) {
 	ctx := context.Background()
 
-	// Create Vertex AI client - automatically uses Application Default Credentials
-	client, err := genai.NewClient(ctx, projectID, location)
+	// Create Vertex AI client with new SDK configuration
+	config := &genai.ClientConfig{
+		Project:  projectID,
+		Location: location,
+		Backend:  genai.BackendVertexAI,
+	}
+
+	client, err := genai.NewClient(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Vertex AI client: %w", err)
 	}
@@ -41,35 +47,44 @@ func NewVertexAIProvider(projectID, location, model string) (*VertexAIProvider, 
 
 // GenerateContent generates content using Vertex AI Gemini SDK
 func (p *VertexAIProvider) GenerateContent(ctx context.Context, prompt string) (string, error) {
-	// Get the model
-	model := p.client.GenerativeModel(p.model)
-
-	// Configure generation parameters
-	model.SetTemperature(0.2)
-	model.SetMaxOutputTokens(2048)
-
-	// Configure safety settings to be permissive for telemetry analysis
-	model.SafetySettings = []*genai.SafetySetting{
+	// Create content parts
+	contents := []*genai.Content{
 		{
-			Category:  genai.HarmCategoryHarassment,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategoryHateSpeech,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategorySexuallyExplicit,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategoryDangerousContent,
-			Threshold: genai.HarmBlockNone,
+			Role: "user",
+			Parts: []*genai.Part{
+				{
+					Text: prompt,
+				},
+			},
 		},
 	}
 
-	// Generate content
-	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
+	// Configure generation parameters
+	config := &genai.GenerateContentConfig{
+		Temperature:     genai.Ptr(float32(0.2)),
+		MaxOutputTokens: 2048,
+		SafetySettings: []*genai.SafetySetting{
+			{
+				Category:  genai.HarmCategoryHarassment,
+				Threshold: genai.HarmBlockThresholdBlockNone,
+			},
+			{
+				Category:  genai.HarmCategoryHateSpeech,
+				Threshold: genai.HarmBlockThresholdBlockNone,
+			},
+			{
+				Category:  genai.HarmCategorySexuallyExplicit,
+				Threshold: genai.HarmBlockThresholdBlockNone,
+			},
+			{
+				Category:  genai.HarmCategoryDangerousContent,
+				Threshold: genai.HarmBlockThresholdBlockNone,
+			},
+		},
+	}
+
+	// Generate content using the new SDK
+	resp, err := p.client.Models.GenerateContent(ctx, p.model, contents, config)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate content: %w", err)
 	}
@@ -98,9 +113,7 @@ func (p *VertexAIProvider) GenerateContent(ctx context.Context, prompt string) (
 	// Convert parts to text
 	var result string
 	for _, part := range candidate.Content.Parts {
-		if text, ok := part.(genai.Text); ok {
-			result += string(text)
-		}
+		result += part.Text
 	}
 
 	if result == "" {
@@ -112,7 +125,8 @@ func (p *VertexAIProvider) GenerateContent(ctx context.Context, prompt string) (
 
 // Close closes the Vertex AI client
 func (p *VertexAIProvider) Close() error {
-	return p.client.Close()
+	// The new SDK doesn't require explicit client closing
+	return nil
 }
 
 // MockProvider implements LLMProvider for testing purposes
