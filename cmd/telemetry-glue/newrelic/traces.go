@@ -9,8 +9,8 @@ import (
 	"github.com/ymtdzzz/telemetry-glue/internal/output"
 )
 
-// TopTracesFlags holds NewRelic-specific flags for top-traces command
-type TopTracesFlags struct {
+// TracesFlags holds NewRelic-specific flags for traces command
+type TracesFlags struct {
 	Common    common.CommonFlags
 	Entity    string
 	Attribute string
@@ -18,12 +18,12 @@ type TopTracesFlags struct {
 	Limit     int
 }
 
-// TopTracesCmd creates the top-traces subcommand for NewRelic
-func TopTracesCmd() *cobra.Command {
-	flags := &TopTracesFlags{}
+// TracesCmd creates the traces subcommand for NewRelic
+func TracesCmd() *cobra.Command {
+	flags := &TracesFlags{}
 
 	cmd := &cobra.Command{
-		Use:   "top-traces",
+		Use:   "traces",
 		Short: "Find top traces containing a specific attribute value in NewRelic",
 		Long: `Find top traces containing a specific attribute value in NewRelic.
 This command searches for traces where the specified attribute exactly matches the given value
@@ -31,12 +31,12 @@ and returns the top traces ordered by duration (longest first).
 
 Examples:
   # Find top traces for a specific HTTP path
-  telemetry-glue newrelic top-traces --entity my-app --attribute http.path --value "/api/users"
+  telemetry-glue newrelic traces --entity my-app --attribute http.path --value "/api/users"
   
   # Find top traces for a specific service with custom limit
-  telemetry-glue newrelic top-traces --entity my-app --attribute service.name --value "user-service" --limit 10`,
+  telemetry-glue newrelic traces --entity my-app --attribute service.name --value "user-service" --limit 10`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTopTraces(flags)
+			return runTraces(flags)
 		},
 	}
 
@@ -57,7 +57,7 @@ Examples:
 	return cmd
 }
 
-func runTopTraces(flags *TopTracesFlags) error {
+func runTraces(flags *TracesFlags) error {
 	// Parse time range
 	timeRange, err := common.ParseTimeRange(flags.Common.TimeRange)
 	if err != nil {

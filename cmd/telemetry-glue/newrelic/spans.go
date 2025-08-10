@@ -39,7 +39,7 @@ Examples:
 	}
 
 	// Add NewRelic-specific flags
-	cmd.Flags().StringVarP(&flags.TraceID, "trace-id", "t", "", "Trace ID to get spans from (required)")
+	cmd.Flags().StringVar(&flags.TraceID, "trace-id", "", "Trace ID to get spans from (required)")
 
 	// Add common flags
 	common.AddCommonFlags(cmd, &flags.Common)

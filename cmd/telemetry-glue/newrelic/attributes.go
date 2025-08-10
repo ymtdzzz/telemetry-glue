@@ -9,32 +9,32 @@ import (
 	"github.com/ymtdzzz/telemetry-glue/internal/output"
 )
 
-// SearchValuesFlags holds NewRelic-specific flags for search-values command
-type SearchValuesFlags struct {
+// AttributesFlags holds NewRelic-specific flags for attributes command
+type AttributesFlags struct {
 	Common    common.CommonFlags
 	Entity    string
 	Attribute string
 	Query     string
 }
 
-// SearchValuesCmd creates the search-values subcommand for NewRelic
-func SearchValuesCmd() *cobra.Command {
-	flags := &SearchValuesFlags{}
+// AttributesCmd creates the attributes subcommand for NewRelic
+func AttributesCmd() *cobra.Command {
+	flags := &AttributesFlags{}
 
 	cmd := &cobra.Command{
-		Use:   "search-values",
+		Use:   "attributes",
 		Short: "Search for unique values of a specified attribute in NewRelic",
 		Long: `Search for unique values of a specified attribute across spans in NewRelic.
 The query supports wildcard patterns using asterisks (*).
 
 Examples:
   # Search for all paths containing "user" in entity "my-app"
-  telemetry-glue newrelic search-values --entity my-app --attribute http.path --query "*user*"
+  telemetry-glue newrelic attributes --entity my-app --attribute http.path --query "*user*"
   
   # Search for all service names
-  telemetry-glue newrelic search-values --entity my-app --attribute service.name --query "*"`,
+  telemetry-glue newrelic attributes --entity my-app --attribute service.name --query "*"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSearchValues(flags)
+			return runAttributes(flags)
 		},
 	}
 
@@ -53,7 +53,7 @@ Examples:
 	return cmd
 }
 
-func runSearchValues(flags *SearchValuesFlags) error {
+func runAttributes(flags *AttributesFlags) error {
 	// Parse time range
 	timeRange, err := common.ParseTimeRange(flags.Common.TimeRange)
 	if err != nil {

@@ -46,7 +46,7 @@ Examples:
 
 	// Add GCP-specific flags
 	cmd.Flags().StringVarP(&flags.ProjectID, "project-id", "p", "", "GCP Project ID (required)")
-	cmd.Flags().StringVarP(&flags.TraceID, "trace-id", "t", "", "Trace ID to get logs from (required)")
+	cmd.Flags().StringVar(&flags.TraceID, "trace-id", "", "Trace ID to get logs from (required)")
 	cmd.Flags().IntVarP(&flags.Limit, "limit", "l", 100, "Maximum number of log entries to return")
 
 	// Add common flags
