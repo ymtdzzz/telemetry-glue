@@ -55,7 +55,7 @@ Examples:
 
 func runSearchValues(flags *SearchValuesFlags) error {
 	// Parse time range
-	timeRange, err := common.ParseTimeRange(flags.Common.Since, flags.Common.Until)
+	timeRange, err := common.ParseTimeRange(flags.Common.TimeRange)
 	if err != nil {
 		return fmt.Errorf("failed to parse time range: %w", err)
 	}

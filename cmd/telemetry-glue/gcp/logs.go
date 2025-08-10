@@ -38,7 +38,7 @@ Examples:
   telemetry-glue gcp logs --project-id my-project --trace-id abc123def456 --limit 50
   
   # Get logs with time range
-  telemetry-glue gcp logs --project-id my-project --trace-id abc123def456 --since 2h`,
+  telemetry-glue gcp logs --project-id my-project --trace-id abc123def456 --time-range "2024-01-15T10:00:00Z,2024-01-15T11:00:00Z"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runLogs(flags)
 		},
@@ -70,7 +70,7 @@ func runLogs(flags *LogsFlags) error {
 	}
 
 	// Parse time range
-	timeRange, err := common.ParseTimeRange(flags.Common.Since, flags.Common.Until)
+	timeRange, err := common.ParseTimeRange(flags.Common.TimeRange)
 	if err != nil {
 		return fmt.Errorf("failed to parse time range: %w", err)
 	}

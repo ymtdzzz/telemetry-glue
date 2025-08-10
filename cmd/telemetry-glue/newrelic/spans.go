@@ -32,7 +32,7 @@ Examples:
   telemetry-glue newrelic spans --trace-id d8a60536187fa0927e45911f8c0dd64b
   
   # Get spans with custom time range
-  telemetry-glue newrelic spans --trace-id d8a60536187fa0927e45911f8c0dd64b --since 2h`,
+  telemetry-glue newrelic spans --trace-id d8a60536187fa0927e45911f8c0dd64b --time-range "2024-01-15T10:00:00Z,2024-01-15T11:00:00Z"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runSpans(flags)
 		},
@@ -61,7 +61,7 @@ func runSpans(flags *SpansFlags) error {
 	}
 
 	// Parse time range
-	timeRange, err := common.ParseTimeRange(flags.Common.Since, flags.Common.Until)
+	timeRange, err := common.ParseTimeRange(flags.Common.TimeRange)
 	if err != nil {
 		return fmt.Errorf("failed to parse time range: %w", err)
 	}
