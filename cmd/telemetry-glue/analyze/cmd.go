@@ -97,7 +97,17 @@ func runAnalyze(flags *Flags) error {
 	switch flags.Provider {
 	case "vertexai":
 		// Use real Vertex AI provider with Application Default Credentials
-		provider, err = analyzer.NewVertexAIProvider("o11y-ymtdzzz", "us-central1", flags.Model)
+		project := os.Getenv("VERTEXAI_PROJECT_ID")
+		if project == "" {
+			return fmt.Errorf("VERTEXAI_PROJECT_ID environment variable is required")
+		}
+
+		location := os.Getenv("VERTEXAI_LOCATION")
+		if location == "" {
+			return fmt.Errorf("VERTEXAI_LOCATION environment variable is required")
+		}
+
+		provider, err = analyzer.NewVertexAIProvider(project, location, flags.Model)
 		if err != nil {
 			return fmt.Errorf("failed to create Vertex AI provider: %w", err)
 		}
