@@ -33,7 +33,29 @@ func NewDataAggregator() *DataAggregator {
 
 // ReadFromStdin reads JSON objects from stdin and combines them
 func (da *DataAggregator) ReadFromStdin(r io.Reader) error {
-	scanner := bufio.NewScanner(r)
+	// Read all data from stdin
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return fmt.Errorf("failed to read from stdin: %w", err)
+	}
+
+	// Trim whitespace
+	data = []byte(strings.TrimSpace(string(data)))
+
+	// If no data, that's okay
+	if len(data) == 0 {
+		return nil
+	}
+
+	// Try to parse as a single JSON object first
+	var obj map[string]interface{}
+	if err := json.Unmarshal(data, &obj); err == nil {
+		return da.addJSONObject(obj)
+	}
+
+	// If that fails, try to parse as line-delimited JSON
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	hasContent := false
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -44,14 +66,20 @@ func (da *DataAggregator) ReadFromStdin(r io.Reader) error {
 			continue
 		}
 
-		var obj map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &obj); err != nil {
-			return fmt.Errorf("failed to parse JSON: %w", err)
+		hasContent = true
+		var lineObj map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &lineObj); err != nil {
+			return fmt.Errorf("failed to parse JSON line: %w", err)
 		}
 
-		if err := da.addJSONObject(obj); err != nil {
+		if err := da.addJSONObject(lineObj); err != nil {
 			return fmt.Errorf("failed to add JSON object: %w", err)
 		}
+	}
+
+	// If there was no content, that's okay - just return nil
+	if !hasContent {
+		return nil
 	}
 
 	return scanner.Err()

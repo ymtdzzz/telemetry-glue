@@ -77,6 +77,11 @@ func runAnalyze(flags *Flags) error {
 	// Read and aggregate data from stdin
 	aggregator := analyzer.NewDataAggregator()
 	if err := aggregator.ReadFromStdin(os.Stdin); err != nil {
+		// If we get a JSON parsing error but have no data, it might be empty stdin
+		// In this case, return a more helpful error message
+		if err.Error() == "failed to parse JSON: unexpected end of JSON input" {
+			return fmt.Errorf("no telemetry data received from stdin. Please pipe data from other commands (e.g., 'newrelic spans | analyze')")
+		}
 		return fmt.Errorf("failed to read data from stdin: %w", err)
 	}
 

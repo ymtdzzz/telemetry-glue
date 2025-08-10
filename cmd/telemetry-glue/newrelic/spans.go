@@ -7,6 +7,7 @@ import (
 	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/common"
 	"github.com/ymtdzzz/telemetry-glue/internal/backend/newrelic"
 	"github.com/ymtdzzz/telemetry-glue/internal/output"
+	"github.com/ymtdzzz/telemetry-glue/internal/pipeline"
 )
 
 // SpansFlags holds NewRelic-specific flags for spans command
@@ -50,6 +51,15 @@ Examples:
 }
 
 func runSpans(flags *SpansFlags) error {
+	// Create passthrough handler for pipeline support
+	passthroughHandler := pipeline.NewPassthroughHandler()
+
+	// Read any existing data from stdin
+	existingData, err := passthroughHandler.ReadStdinIfAvailable()
+	if err != nil {
+		return fmt.Errorf("failed to read stdin: %w", err)
+	}
+
 	// Parse time range
 	timeRange, err := common.ParseTimeRange(flags.Common.Since, flags.Common.Until)
 	if err != nil {
@@ -86,11 +96,13 @@ func runSpans(flags *SpansFlags) error {
 		outputSpans = append(outputSpans, output.Span(span))
 	}
 
-	// Output results
+	// Create spans result
 	result := output.SpansResult{
 		Spans:   outputSpans,
 		WebLink: webLink,
 	}
 
-	return result.Print(format)
+	// Merge with existing data and output
+	mergedData := passthroughHandler.MergeSpansResult(existingData, &result)
+	return passthroughHandler.OutputMergedResult(mergedData, &result, format)
 }

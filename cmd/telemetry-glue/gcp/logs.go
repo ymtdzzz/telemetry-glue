@@ -8,6 +8,7 @@ import (
 	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/common"
 	"github.com/ymtdzzz/telemetry-glue/internal/backend/gcp"
 	"github.com/ymtdzzz/telemetry-glue/internal/output"
+	"github.com/ymtdzzz/telemetry-glue/internal/pipeline"
 )
 
 // LogsFlags holds GCP-specific flags for logs command
@@ -59,6 +60,15 @@ Examples:
 }
 
 func runLogs(flags *LogsFlags) error {
+	// Create passthrough handler for pipeline support
+	passthroughHandler := pipeline.NewPassthroughHandler()
+
+	// Read any existing data from stdin
+	existingData, err := passthroughHandler.ReadStdinIfAvailable()
+	if err != nil {
+		return fmt.Errorf("failed to read stdin: %w", err)
+	}
+
 	// Parse time range
 	timeRange, err := common.ParseTimeRange(flags.Common.Since, flags.Common.Until)
 	if err != nil {
@@ -145,13 +155,15 @@ func runLogs(flags *LogsFlags) error {
 		outputLogs = append(outputLogs, logEntry)
 	}
 
-	// Output results
+	// Create logs result
 	result := output.LogsResult{
 		Logs:    outputLogs,
 		WebLink: webLink,
 	}
 
-	return result.Print(format)
+	// Merge with existing data and output
+	mergedData := passthroughHandler.MergeLogsResult(existingData, &result)
+	return passthroughHandler.OutputMergedResult(mergedData, &result, format)
 }
 
 // extractTraceID extracts the trace ID from the full trace resource path
