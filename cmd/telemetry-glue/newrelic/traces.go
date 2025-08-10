@@ -11,11 +11,11 @@ import (
 
 // TracesFlags holds NewRelic-specific flags for traces command
 type TracesFlags struct {
-	Common    common.CommonFlags
-	Entity    string
-	Attribute string
-	Value     string
-	Limit     int
+	Common common.CommonFlags
+	Entity string
+	Field  string
+	Value  string
+	Limit  int
 }
 
 // TracesCmd creates the traces subcommand for NewRelic
@@ -24,17 +24,17 @@ func TracesCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "traces",
-		Short: "Find top traces containing a specific attribute value in NewRelic",
-		Long: `Find top traces containing a specific attribute value in NewRelic.
-This command searches for traces where the specified attribute exactly matches the given value
+		Short: "Find top traces containing a specific field value in NewRelic",
+		Long: `Find top traces containing a specific field value in NewRelic.
+This command searches for traces where the specified field exactly matches the given value
 and returns the top traces ordered by duration (longest first).
 
 Examples:
   # Find top traces for a specific HTTP path
-  telemetry-glue newrelic traces --entity my-app --attribute http.path --value "/api/users"
+  telemetry-glue newrelic traces --entity my-app --field http.path --value "/api/users"
   
   # Find top traces for a specific service with custom limit
-  telemetry-glue newrelic traces --entity my-app --attribute service.name --value "user-service" --limit 10`,
+  telemetry-glue newrelic traces --entity my-app --field service.name --value "user-service" --limit 10`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTraces(flags)
 		},
@@ -42,7 +42,7 @@ Examples:
 
 	// Add NewRelic-specific flags
 	cmd.Flags().StringVarP(&flags.Entity, "entity", "e", "", "NewRelic entity name or GUID (required)")
-	cmd.Flags().StringVarP(&flags.Attribute, "attribute", "a", "", "Attribute to filter by (required)")
+	cmd.Flags().StringVar(&flags.Field, "field", "", "Field to filter by (required)")
 	cmd.Flags().StringVarP(&flags.Value, "value", "v", "", "Exact value to match (required)")
 	cmd.Flags().IntVarP(&flags.Limit, "limit", "l", 5, "Number of top traces to return (default: 5)")
 
@@ -51,7 +51,7 @@ Examples:
 
 	// Mark required flags
 	cmd.MarkFlagRequired("entity")
-	cmd.MarkFlagRequired("attribute")
+	cmd.MarkFlagRequired("field")
 	cmd.MarkFlagRequired("value")
 
 	return cmd
@@ -79,7 +79,7 @@ func runTraces(flags *TracesFlags) error {
 	// Execute top traces search
 	traces, webLink, err := client.SearchTopTraces(newrelic.TopTracesRequest{
 		Entity:    flags.Entity,
-		Attribute: flags.Attribute,
+		Attribute: flags.Field,
 		Value:     flags.Value,
 		Limit:     flags.Limit,
 		TimeRange: newrelic.TimeRange{

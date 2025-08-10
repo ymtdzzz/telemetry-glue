@@ -11,10 +11,10 @@ import (
 
 // AttributesFlags holds NewRelic-specific flags for attributes command
 type AttributesFlags struct {
-	Common    common.CommonFlags
-	Entity    string
-	Attribute string
-	Query     string
+	Common  common.CommonFlags
+	Entity  string
+	Field   string
+	Pattern string
 }
 
 // AttributesCmd creates the attributes subcommand for NewRelic
@@ -23,16 +23,16 @@ func AttributesCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "attributes",
-		Short: "Search for unique values of a specified attribute in NewRelic",
-		Long: `Search for unique values of a specified attribute across spans in NewRelic.
-The query supports wildcard patterns using asterisks (*).
+		Short: "Search for unique values of a specified field in NewRelic",
+		Long: `Search for unique values of a specified field across spans in NewRelic.
+The pattern supports wildcard patterns using asterisks (*).
 
 Examples:
   # Search for all paths containing "user" in entity "my-app"
-  telemetry-glue newrelic attributes --entity my-app --attribute http.path --query "*user*"
+  telemetry-glue newrelic attributes --entity my-app --field http.path --pattern "*user*"
   
   # Search for all service names
-  telemetry-glue newrelic attributes --entity my-app --attribute service.name --query "*"`,
+  telemetry-glue newrelic attributes --entity my-app --field service.name --pattern "*"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runAttributes(flags)
 		},
@@ -40,15 +40,15 @@ Examples:
 
 	// Add NewRelic-specific flags
 	cmd.Flags().StringVarP(&flags.Entity, "entity", "e", "", "NewRelic entity name or GUID (required)")
-	cmd.Flags().StringVarP(&flags.Attribute, "attribute", "a", "", "Attribute to search (required)")
-	cmd.Flags().StringVarP(&flags.Query, "query", "q", "*", "Search query pattern (supports wildcards)")
+	cmd.Flags().StringVar(&flags.Field, "field", "", "Field to search (required)")
+	cmd.Flags().StringVarP(&flags.Pattern, "pattern", "p", "*", "Search pattern (supports wildcards)")
 
 	// Add common flags
 	common.AddCommonFlags(cmd, &flags.Common)
 
 	// Mark required flags
 	cmd.MarkFlagRequired("entity")
-	cmd.MarkFlagRequired("attribute")
+	cmd.MarkFlagRequired("field")
 
 	return cmd
 }
@@ -75,8 +75,8 @@ func runAttributes(flags *AttributesFlags) error {
 	// Execute search
 	values, webLink, err := client.SearchValues(newrelic.SearchValuesRequest{
 		Entity:    flags.Entity,
-		Attribute: flags.Attribute,
-		Query:     flags.Query,
+		Attribute: flags.Field,
+		Query:     flags.Pattern,
 		TimeRange: newrelic.TimeRange{
 			Start: timeRange.Start,
 			End:   timeRange.End,
