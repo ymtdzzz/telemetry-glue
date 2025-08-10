@@ -106,16 +106,58 @@ gcloud run deploy slack-functions \
 
 ## Environment Variables
 
-The following environment variables are required:
+### Required Variables
+
+- `SLACK_BOT_TOKEN`: Slack Bot token for API authentication
+- `SLACK_SIGNING_SECRET`: Slack signing secret for request verification
+- `GOOGLE_CLOUD_PROJECT`: Google Cloud project ID for Cloud Tasks
+- `WORKER_ENDPOINT`: URL endpoint for the trace analysis worker
+
+### Optional Variables (with defaults)
+
+- `TASKS_QUEUE_NAME`: Cloud Tasks queue name (default: `analyze-queue`)
+- `TASKS_LOCATION`: Cloud Tasks location (default: `us-central1`)
+- `TRACE_BACKEND`: Backend for trace data (default: `newrelic`)
+- `LOG_BACKEND`: Backend for log data (default: `gcp`)
+- `LLM_BACKEND`: Backend for AI analysis (default: `vertexai`)
+- `VERTEXAI_LOCATION`: Vertex AI location (default: `us-central1`)
+
+### Backend-Specific Variables
+
+The following variables are required depending on which backends you configure:
+
+#### NewRelic Backend (for traces)
+
+Required when `TRACE_BACKEND=newrelic`:
 
 - `NEWRELIC_API_KEY`: New Relic API key
 - `NEWRELIC_ACCOUNT_ID`: New Relic account ID
-- `SLACK_BOT_TOKEN`: Slack Bot token
+
+#### GCP Backend (for logs)
+
+Required when `LOG_BACKEND=gcp`:
+
+- `GCP_PROJECT_ID`: Google Cloud project ID for log queries
+
+#### VertexAI Backend (for AI analysis)
+
+Required when `LLM_BACKEND=vertexai`:
+
 - `VERTEXAI_PROJECT_ID`: Vertex AI project ID
-- `VERTEXAI_LOCATION`: Vertex AI location
-- `GCP_PROJECT_ID`: Google Cloud project ID
-- `GCP_LOCATION`: Cloud Tasks location
-- `GCP_QUEUE_NAME`: Cloud Tasks queue name
+- `VERTEXAI_LOCATION`: Vertex AI location (optional, defaults to `us-central1`)
+
+### Backend Configuration
+
+This application supports multiple backends for different data sources:
+
+- **Trace Backend**: Where to fetch trace data from
+  - `newrelic`: New Relic APM (default)
+- **Log Backend**: Where to fetch log data from
+  - `gcp`: Google Cloud Logging (default)
+- **LLM Backend**: Which AI service to use for analysis
+  - `vertexai`: Google Vertex AI (default)
+
+You can mix and match backends. For example, you could use New Relic for traces, GCP for logs, and Vertex AI for analysis (the default configuration).
 
 ## Slack App Configuration
 
