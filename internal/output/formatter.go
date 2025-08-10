@@ -19,10 +19,68 @@ const (
 	FormatTable Format = "table"
 )
 
+// Formatter interface for types that can format their output
+type Formatter interface {
+	Print(format Format) error
+}
+
 // SearchValuesResult represents search values output
 type SearchValuesResult struct {
 	Values  []string `json:"values"`
 	WebLink string   `json:"web_link,omitempty"`
+}
+
+// Print outputs search values result in the specified format
+func (r SearchValuesResult) Print(format Format) error {
+	switch format {
+	case FormatJSON:
+		return r.printJSON()
+	case FormatCSV:
+		return r.printCSV()
+	case FormatTable, "":
+		return r.printTable()
+	default:
+		return fmt.Errorf("unsupported output format: %s", format)
+	}
+}
+
+func (r SearchValuesResult) printJSON() error {
+	return printJSON(r)
+}
+
+func (r SearchValuesResult) printTable() error {
+	fmt.Printf("Found %d unique values:\n", len(r.Values))
+	for _, value := range r.Values {
+		fmt.Printf("  %s\n", value)
+	}
+	if r.WebLink != "" {
+		fmt.Printf("\nView in UI: %s\n", r.WebLink)
+	}
+	return nil
+}
+
+func (r SearchValuesResult) printCSV() error {
+	writer := csv.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	// Write header
+	if err := writer.Write([]string{"value"}); err != nil {
+		return err
+	}
+
+	// Write values
+	for _, value := range r.Values {
+		if err := writer.Write([]string{value}); err != nil {
+			return err
+		}
+	}
+
+	// Print web link separately for CSV
+	if r.WebLink != "" {
+		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", r.WebLink)
+	}
+
+	return nil
 }
 
 // TraceSummary represents a trace summary for output
@@ -39,146 +97,40 @@ type TopTracesResult struct {
 	WebLink string         `json:"web_link,omitempty"`
 }
 
-// Span represents a span for output
-type Span map[string]interface{}
-
-// SpansResult represents spans output
-type SpansResult struct {
-	Spans   []Span `json:"spans"`
-	WebLink string `json:"web_link,omitempty"`
-}
-
-// LogEntry represents a log entry for output
-type LogEntry struct {
-	Timestamp  time.Time              `json:"timestamp"`
-	TraceID    string                 `json:"trace_id,omitempty"`
-	SpanID     string                 `json:"span_id,omitempty"`
-	Message    string                 `json:"message"`
-	Attributes map[string]interface{} `json:"attributes,omitempty"`
-}
-
-// LogsResult represents logs output
-type LogsResult struct {
-	Logs    []LogEntry `json:"logs"`
-	WebLink string     `json:"web_link,omitempty"`
-}
-
-// PrintSearchValues outputs search values result in the specified format
-func PrintSearchValues(result SearchValuesResult, format Format) error {
+// Print outputs top traces result in the specified format
+func (r TopTracesResult) Print(format Format) error {
 	switch format {
 	case FormatJSON:
-		return printJSON(result)
+		return r.printJSON()
 	case FormatCSV:
-		return printSearchValuesCSV(result)
+		return r.printCSV()
 	case FormatTable, "":
-		return printSearchValuesTable(result)
+		return r.printTable()
 	default:
 		return fmt.Errorf("unsupported output format: %s", format)
 	}
 }
 
-// PrintTopTraces outputs top traces result in the specified format
-func PrintTopTraces(result TopTracesResult, format Format) error {
-	switch format {
-	case FormatJSON:
-		return printJSON(result)
-	case FormatCSV:
-		return printTopTracesCSV(result)
-	case FormatTable, "":
-		return printTopTracesTable(result)
-	default:
-		return fmt.Errorf("unsupported output format: %s", format)
-	}
+func (r TopTracesResult) printJSON() error {
+	return printJSON(r)
 }
 
-// PrintSpans outputs spans result in the specified format
-func PrintSpans(result SpansResult, format Format) error {
-	switch format {
-	case FormatJSON:
-		return printJSON(result)
-	case FormatCSV:
-		return printSpansCSV(result)
-	case FormatTable, "":
-		return printSpansTable(result)
-	default:
-		return fmt.Errorf("unsupported output format: %s", format)
-	}
-}
-
-// PrintLogs outputs logs result in the specified format
-func PrintLogs(result LogsResult, format Format) error {
-	switch format {
-	case FormatJSON:
-		return printJSON(result)
-	case FormatCSV:
-		return printLogsCSV(result)
-	case FormatTable, "":
-		return printLogsTable(result)
-	default:
-		return fmt.Errorf("unsupported output format: %s", format)
-	}
-}
-
-func printJSON(data interface{}) error {
-	jsonData, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
-	}
-	fmt.Println(string(jsonData))
-	return nil
-}
-
-func printSearchValuesTable(result SearchValuesResult) error {
-	fmt.Printf("Found %d unique values:\n", len(result.Values))
-	for _, value := range result.Values {
-		fmt.Printf("  %s\n", value)
-	}
-	if result.WebLink != "" {
-		fmt.Printf("\nView in UI: %s\n", result.WebLink)
-	}
-	return nil
-}
-
-func printSearchValuesCSV(result SearchValuesResult) error {
-	writer := csv.NewWriter(os.Stdout)
-	defer writer.Flush()
-
-	// Write header
-	if err := writer.Write([]string{"value"}); err != nil {
-		return err
-	}
-
-	// Write values
-	for _, value := range result.Values {
-		if err := writer.Write([]string{value}); err != nil {
-			return err
-		}
-	}
-
-	// Print web link separately for CSV
-	if result.WebLink != "" {
-		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", result.WebLink)
-	}
-
-	return nil
-}
-
-func printTopTracesTable(result TopTracesResult) error {
-	fmt.Printf("Top %d traces:\n", len(result.Traces))
-	for i, trace := range result.Traces {
+func (r TopTracesResult) printTable() error {
+	fmt.Printf("Top %d traces:\n", len(r.Traces))
+	for i, trace := range r.Traces {
 		fmt.Printf("%d. %s (%s) - %.3fs\n",
 			i+1,
 			trace.TraceID,
 			trace.StartTime.Format("2006-01-02 15:04:05"),
 			trace.Duration)
 	}
-	if result.WebLink != "" {
-		fmt.Printf("\nView in UI: %s\n", result.WebLink)
+	if r.WebLink != "" {
+		fmt.Printf("\nView in UI: %s\n", r.WebLink)
 	}
 	return nil
 }
 
-func printTopTracesCSV(result TopTracesResult) error {
+func (r TopTracesResult) printCSV() error {
 	writer := csv.NewWriter(os.Stdout)
 	defer writer.Flush()
 
@@ -188,7 +140,7 @@ func printTopTracesCSV(result TopTracesResult) error {
 	}
 
 	// Write traces
-	for _, trace := range result.Traces {
+	for _, trace := range r.Traces {
 		if err := writer.Write([]string{
 			trace.TraceID,
 			trace.StartTime.Format(time.RFC3339),
@@ -199,22 +151,49 @@ func printTopTracesCSV(result TopTracesResult) error {
 	}
 
 	// Print web link separately for CSV
-	if result.WebLink != "" {
-		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", result.WebLink)
+	if r.WebLink != "" {
+		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", r.WebLink)
 	}
 
 	return nil
 }
 
-func printSpansTable(result SpansResult) error {
-	fmt.Printf("Found %d spans:\n\n", len(result.Spans))
+// Span represents a span for output
+type Span map[string]interface{}
 
-	if len(result.Spans) == 0 {
+// SpansResult represents spans output
+type SpansResult struct {
+	Spans   []Span `json:"spans"`
+	WebLink string `json:"web_link,omitempty"`
+}
+
+// Print outputs spans result in the specified format
+func (r SpansResult) Print(format Format) error {
+	switch format {
+	case FormatJSON:
+		return r.printJSON()
+	case FormatCSV:
+		return r.printCSV()
+	case FormatTable, "":
+		return r.printTable()
+	default:
+		return fmt.Errorf("unsupported output format: %s", format)
+	}
+}
+
+func (r SpansResult) printJSON() error {
+	return printJSON(r)
+}
+
+func (r SpansResult) printTable() error {
+	fmt.Printf("Found %d spans:\n\n", len(r.Spans))
+
+	if len(r.Spans) == 0 {
 		fmt.Println("No spans found.")
 		return nil
 	}
 
-	for i, span := range result.Spans {
+	for i, span := range r.Spans {
 		fmt.Printf("=== Span %d ===\n", i+1)
 
 		// Sort keys for consistent output
@@ -266,17 +245,18 @@ func printSpansTable(result SpansResult) error {
 			fmt.Printf("  %-30s: %s\n", key, valueStr)
 		}
 
-		if i < len(result.Spans)-1 {
+		if i < len(r.Spans)-1 {
 			fmt.Println()
 		}
 	}
 
-	if result.WebLink != "" {
-		fmt.Printf("\nView in UI: %s\n", result.WebLink)
+	if r.WebLink != "" {
+		fmt.Printf("\nView in UI: %s\n", r.WebLink)
 	}
 	return nil
 }
-func printSpansCSV(result SpansResult) error {
+
+func (r SpansResult) printCSV() error {
 	writer := csv.NewWriter(os.Stdout)
 	defer writer.Flush()
 
@@ -286,7 +266,7 @@ func printSpansCSV(result SpansResult) error {
 	}
 
 	// Write spans
-	for _, span := range result.Spans {
+	for _, span := range r.Spans {
 		// Extract values with type assertions and provide defaults using correct field names
 		spanID := ""
 		if id, ok := span["id"].(string); ok {
@@ -349,27 +329,60 @@ func printSpansCSV(result SpansResult) error {
 	}
 
 	// Print web link separately for CSV
-	if result.WebLink != "" {
-		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", result.WebLink)
+	if r.WebLink != "" {
+		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", r.WebLink)
 	}
 
 	return nil
 }
 
-func printLogsTable(result LogsResult) error {
-	fmt.Printf("Found %d log entries:\n", len(result.Logs))
-	for _, log := range result.Logs {
+// LogEntry represents a log entry for output
+type LogEntry struct {
+	Timestamp  time.Time              `json:"timestamp"`
+	TraceID    string                 `json:"trace_id,omitempty"`
+	SpanID     string                 `json:"span_id,omitempty"`
+	Message    string                 `json:"message"`
+	Attributes map[string]interface{} `json:"attributes,omitempty"`
+}
+
+// LogsResult represents logs output
+type LogsResult struct {
+	Logs    []LogEntry `json:"logs"`
+	WebLink string     `json:"web_link,omitempty"`
+}
+
+// Print outputs logs result in the specified format
+func (r LogsResult) Print(format Format) error {
+	switch format {
+	case FormatJSON:
+		return r.printJSON()
+	case FormatCSV:
+		return r.printCSV()
+	case FormatTable, "":
+		return r.printTable()
+	default:
+		return fmt.Errorf("unsupported output format: %s", format)
+	}
+}
+
+func (r LogsResult) printJSON() error {
+	return printJSON(r)
+}
+
+func (r LogsResult) printTable() error {
+	fmt.Printf("Found %d log entries:\n", len(r.Logs))
+	for _, log := range r.Logs {
 		fmt.Printf("  %s: %s\n",
 			log.Timestamp.Format("2006-01-02 15:04:05.000"),
 			truncateString(log.Message, 80))
 	}
-	if result.WebLink != "" {
-		fmt.Printf("\nView in UI: %s\n", result.WebLink)
+	if r.WebLink != "" {
+		fmt.Printf("\nView in UI: %s\n", r.WebLink)
 	}
 	return nil
 }
 
-func printLogsCSV(result LogsResult) error {
+func (r LogsResult) printCSV() error {
 	writer := csv.NewWriter(os.Stdout)
 	defer writer.Flush()
 
@@ -379,7 +392,7 @@ func printLogsCSV(result LogsResult) error {
 	}
 
 	// Write logs
-	for _, log := range result.Logs {
+	for _, log := range r.Logs {
 		if err := writer.Write([]string{
 			log.Timestamp.Format(time.RFC3339Nano),
 			log.TraceID,
@@ -391,10 +404,19 @@ func printLogsCSV(result LogsResult) error {
 	}
 
 	// Print web link separately for CSV
-	if result.WebLink != "" {
-		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", result.WebLink)
+	if r.WebLink != "" {
+		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", r.WebLink)
 	}
 
+	return nil
+}
+
+func printJSON(data interface{}) error {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+	fmt.Println(string(jsonData))
 	return nil
 }
 

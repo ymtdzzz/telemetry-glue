@@ -92,5 +92,5 @@ func runSearchValues(flags *SearchValuesFlags) error {
 		WebLink: webLink,
 	}
 
-	return output.PrintSearchValues(result, format)
+	return result.Print(format)
 }

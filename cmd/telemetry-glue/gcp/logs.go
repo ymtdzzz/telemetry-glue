@@ -151,7 +151,7 @@ func runLogs(flags *LogsFlags) error {
 		WebLink: webLink,
 	}
 
-	return output.PrintLogs(result, format)
+	return result.Print(format)
 }
 
 // extractTraceID extracts the trace ID from the full trace resource path

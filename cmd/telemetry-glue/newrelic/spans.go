@@ -92,5 +92,5 @@ func runSpans(flags *SpansFlags) error {
 		WebLink: webLink,
 	}
 
-	return output.PrintSpans(result, format)
+	return result.Print(format)
 }

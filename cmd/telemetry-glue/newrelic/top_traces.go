@@ -111,5 +111,5 @@ func runTopTraces(flags *TopTracesFlags) error {
 		WebLink: webLink,
 	}
 
-	return output.PrintTopTraces(result, format)
+	return result.Print(format)
 }
