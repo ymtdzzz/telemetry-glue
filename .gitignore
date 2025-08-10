@@ -24,3 +24,6 @@ coverage.html
 # Temporary files
 *.tmp
 *.temp
+
+# Serena
+.serena/cache/*
