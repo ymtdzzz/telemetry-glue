@@ -36,3 +36,19 @@ module "secret_manager" {
   environment = var.environment
   region      = var.region
 }
+
+# Cloud Functions with IAM for Slack bot
+module "cloud_function" {
+  source = "./modules/cloud-function"
+
+  project_id  = var.project_id
+  environment = var.environment
+  region      = var.region
+
+  secret_ids = {
+    slack_bot_token      = module.secret_manager.slack_bot_token_secret_id
+    slack_signing_secret = module.secret_manager.slack_signing_secret_secret_id
+    newrelic_api_key     = module.secret_manager.newrelic_api_key_secret_id
+    newrelic_account_id  = module.secret_manager.newrelic_account_id_secret_id
+  }
+}
