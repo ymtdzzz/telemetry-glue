@@ -26,8 +26,7 @@ type Formatter interface {
 
 // SearchValuesResult represents search values output
 type SearchValuesResult struct {
-	Values  []string `json:"values"`
-	WebLink string   `json:"web_link,omitempty"`
+	Values []string `json:"values"`
 }
 
 // Print outputs search values result in the specified format
@@ -53,9 +52,7 @@ func (r SearchValuesResult) printTable() error {
 	for _, value := range r.Values {
 		fmt.Printf("  %s\n", value)
 	}
-	if r.WebLink != "" {
-		fmt.Printf("\nView in UI: %s\n", r.WebLink)
-	}
+
 	return nil
 }
 
@@ -75,10 +72,7 @@ func (r SearchValuesResult) printCSV() error {
 		}
 	}
 
-	// Print web link separately for CSV
-	if r.WebLink != "" {
-		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", r.WebLink)
-	}
+
 
 	return nil
 }
@@ -93,8 +87,7 @@ type TraceSummary struct {
 
 // TopTracesResult represents top traces output
 type TopTracesResult struct {
-	Traces  []TraceSummary `json:"traces"`
-	WebLink string         `json:"web_link,omitempty"`
+	Traces []TraceSummary `json:"traces"`
 }
 
 // Print outputs top traces result in the specified format
@@ -124,9 +117,7 @@ func (r TopTracesResult) printTable() error {
 			trace.StartTime.Format("2006-01-02 15:04:05"),
 			trace.Duration)
 	}
-	if r.WebLink != "" {
-		fmt.Printf("\nView in UI: %s\n", r.WebLink)
-	}
+
 	return nil
 }
 
@@ -150,10 +141,7 @@ func (r TopTracesResult) printCSV() error {
 		}
 	}
 
-	// Print web link separately for CSV
-	if r.WebLink != "" {
-		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", r.WebLink)
-	}
+
 
 	return nil
 }
@@ -163,8 +151,7 @@ type Span map[string]interface{}
 
 // SpansResult represents spans output
 type SpansResult struct {
-	Spans   []Span `json:"spans"`
-	WebLink string `json:"web_link,omitempty"`
+	Spans []Span `json:"spans"`
 }
 
 // Print outputs spans result in the specified format
@@ -251,9 +238,7 @@ func (r SpansResult) printTable() error {
 		}
 	}
 
-	if r.WebLink != "" {
-		fmt.Printf("\nView in UI: %s\n", r.WebLink)
-	}
+
 	return nil
 }
 
@@ -329,10 +314,7 @@ func (r SpansResult) printCSV() error {
 		}
 	}
 
-	// Print web link separately for CSV
-	if r.WebLink != "" {
-		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", r.WebLink)
-	}
+
 
 	return nil
 }
@@ -348,8 +330,7 @@ type LogEntry struct {
 
 // LogsResult represents logs output
 type LogsResult struct {
-	Logs    []LogEntry `json:"logs"`
-	WebLink string     `json:"web_link,omitempty"`
+	Logs []LogEntry `json:"logs"`
 }
 
 // Print outputs logs result in the specified format
@@ -377,9 +358,7 @@ func (r LogsResult) printTable() error {
 			log.Timestamp.Format("2006-01-02 15:04:05.000"),
 			truncateString(log.Message, 80))
 	}
-	if r.WebLink != "" {
-		fmt.Printf("\nView in UI: %s\n", r.WebLink)
-	}
+
 	return nil
 }
 
@@ -404,10 +383,7 @@ func (r LogsResult) printCSV() error {
 		}
 	}
 
-	// Print web link separately for CSV
-	if r.WebLink != "" {
-		fmt.Fprintf(os.Stderr, "# View in UI: %s\n", r.WebLink)
-	}
+
 
 	return nil
 }

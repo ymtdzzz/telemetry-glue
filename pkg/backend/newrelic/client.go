@@ -105,7 +105,7 @@ func NewClient() (*Client, error) {
 }
 
 // SearchValues searches for unique values of a specified attribute
-func (c *Client) SearchValues(req SearchValuesRequest) ([]string, string, error) {
+func (c *Client) SearchValues(req SearchValuesRequest) ([]string, error) {
 	// Build NRQL query for searching attribute values with pattern matching
 	// Convert wildcard pattern (*user*) to SQL LIKE pattern (%user%)
 	likePattern := strings.ReplaceAll(req.Query, "*", "%")
@@ -142,23 +142,20 @@ func (c *Client) SearchValues(req SearchValuesRequest) ([]string, string, error)
 	// Execute the query
 	resp, err := c.client.Query(graphqlQuery, variables)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to execute NerdGraph query: %w", err)
+		return nil, fmt.Errorf("failed to execute NerdGraph query: %w", err)
 	}
 
 	// Parse the response
 	values, err := c.parseSearchValuesResponse(resp, req.Attribute)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to parse response: %w", err)
+		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	// Generate web link
-	webLink := c.generateWebLinkForSearchValues(req.Attribute, req.Query, req.TimeRange)
-
-	return values, webLink, nil
+	return values, nil
 }
 
 // SearchTopTraces searches for top traces containing a specific attribute value
-func (c *Client) SearchTopTraces(req TopTracesRequest) ([]TraceInfo, string, error) {
+func (c *Client) SearchTopTraces(req TopTracesRequest) ([]TraceInfo, error) {
 	// Calculate time range in minutes from current time
 	timeSinceStart := time.Since(req.TimeRange.Start).Minutes()
 	timeSinceEnd := time.Since(req.TimeRange.End).Minutes()
@@ -204,23 +201,20 @@ func (c *Client) SearchTopTraces(req TopTracesRequest) ([]TraceInfo, string, err
 	// Execute the query
 	resp, err := c.client.Query(graphqlQuery, variables)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to execute NerdGraph query: %w", err)
+		return nil, fmt.Errorf("failed to execute NerdGraph query: %w", err)
 	}
 
 	// Parse the response
 	traces, err := c.parseTopTracesResponse(resp)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to parse response: %w", err)
+		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	// Generate web link
-	webLink := c.generateWebLinkForTopTraces(req.Attribute, req.Value, req.TimeRange)
-
-	return traces, webLink, nil
+	return traces, nil
 }
 
 // SearchSpans searches for all spans within a specific trace
-func (c *Client) SearchSpans(req SpansRequest) ([]SpanInfo, string, error) {
+func (c *Client) SearchSpans(req SpansRequest) ([]SpanInfo, error) {
 	// Calculate time range in minutes from current time
 	timeSinceStart := time.Since(req.TimeRange.Start).Minutes()
 	timeSinceEnd := time.Since(req.TimeRange.End).Minutes()
@@ -257,19 +251,16 @@ func (c *Client) SearchSpans(req SpansRequest) ([]SpanInfo, string, error) {
 	// Execute the query
 	resp, err := c.client.Query(graphqlQuery, variables)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to execute NerdGraph query: %w", err)
+		return nil, fmt.Errorf("failed to execute NerdGraph query: %w", err)
 	}
 
 	// Parse the response
 	spans, err := c.parseSpansResponse(resp)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to parse response: %w", err)
+		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	// Generate web link
-	webLink := c.generateWebLinkForSpans(req.TraceID, req.TimeRange)
-
-	return spans, webLink, nil
+	return spans, nil
 }
 
 // parseSpansResponse parses the NerdGraph response for SearchSpans
@@ -321,16 +312,7 @@ func (c *Client) parseSpansResponse(resp interface{}) ([]SpanInfo, error) {
 	return spans, nil
 }
 
-// generateWebLinkForSpans generates a New Relic UI link for spans
-func (c *Client) generateWebLinkForSpans(traceID string, timeRange TimeRange) string {
-	// Generate NRQL query for the web link
-	nrqlQuery := fmt.Sprintf(`SELECT * FROM Span WHERE trace.id = '%s' SINCE %d minutes ago ORDER BY timestamp ASC`,
-		traceID, int(time.Since(timeRange.Start).Minutes()))
 
-	// New Relic query link format
-	return fmt.Sprintf("https://one.newrelic.com/nr1-core?account=%d&filters=%%7B%%22query%%22%%3A%%22%s%%22%%7D",
-		c.accountID, nrqlQuery)
-}
 
 // parseTopTracesResponse parses the NerdGraph response for SearchTopTraces
 func (c *Client) parseTopTracesResponse(resp interface{}) ([]TraceInfo, error) {
@@ -435,16 +417,7 @@ func (c *Client) parseTopTracesResponse(resp interface{}) ([]TraceInfo, error) {
 	return traces, nil
 }
 
-// generateWebLinkForTopTraces generates a New Relic UI link for top traces
-func (c *Client) generateWebLinkForTopTraces(attribute, value string, timeRange TimeRange) string {
-	// Generate NRQL query for the web link
-	nrqlQuery := fmt.Sprintf(`SELECT max(duration.ms) as maxDuration FROM Span WHERE %s = '%s' SINCE %d minutes ago FACET trace.id ORDER BY maxDuration DESC`,
-		attribute, value, int(time.Since(timeRange.Start).Minutes()))
 
-	// New Relic query link format
-	return fmt.Sprintf("https://one.newrelic.com/nr1-core?account=%d&filters=%%7B%%22query%%22%%3A%%22%s%%22%%7D",
-		c.accountID, nrqlQuery)
-}
 
 // parseSearchValuesResponse parses the NerdGraph response for SearchValues
 func (c *Client) parseSearchValuesResponse(resp interface{}, attribute string) ([]string, error) {
@@ -516,13 +489,4 @@ func (c *Client) convertToString(value interface{}) (string, error) {
 	}
 }
 
-// generateWebLinkForSearchValues generates a New Relic UI link for search values
-func (c *Client) generateWebLinkForSearchValues(attribute, query string, timeRange TimeRange) string {
-	// Generate NRQL query for the web link
-	nrqlQuery := fmt.Sprintf("SELECT %s FROM Span WHERE %s LIKE '%%%s%%' SINCE %d minutes ago",
-		attribute, attribute, query, int(time.Since(timeRange.Start).Minutes()))
 
-	// New Relic query link format
-	return fmt.Sprintf("https://one.newrelic.com/nr1-core?account=%d&filters=%%7B%%22query%%22%%3A%%22%s%%22%%7D",
-		c.accountID, nrqlQuery)
-}

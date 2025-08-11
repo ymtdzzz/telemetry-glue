@@ -92,7 +92,7 @@ func runLogs(flags *LogsFlags) error {
 	}
 
 	// Execute logs search
-	entries, webLink, err := client.SearchLogs(gcp.LogsRequest{
+	entries, err := client.SearchLogs(gcp.LogsRequest{
 		ProjectID: flags.ProjectID,
 		TraceID:   flags.TraceID,
 		Limit:     flags.Limit,
@@ -161,8 +161,7 @@ func runLogs(flags *LogsFlags) error {
 
 	// Create logs result
 	result := output.LogsResult{
-		Logs:    outputLogs,
-		WebLink: webLink,
+		Logs: outputLogs,
 	}
 
 	// Merge with existing data and output

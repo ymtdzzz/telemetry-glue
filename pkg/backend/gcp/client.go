@@ -68,12 +68,12 @@ func NewClient() (*Client, error) {
 }
 
 // SearchLogs searches for log entries by trace ID
-func (c *Client) SearchLogs(req LogsRequest) ([]LogEntry, string, error) {
+func (c *Client) SearchLogs(req LogsRequest) ([]LogEntry, error) {
 	if req.ProjectID == "" {
-		return nil, "", ErrMissingProjectID
+		return nil, ErrMissingProjectID
 	}
 	if req.TraceID == "" {
-		return nil, "", ErrMissingTraceID
+		return nil, ErrMissingTraceID
 	}
 
 	// Build the filter for trace ID
@@ -105,7 +105,7 @@ func (c *Client) SearchLogs(req LogsRequest) ([]LogEntry, string, error) {
 	// Execute the request
 	resp, err := c.service.Entries.List(listReq).Do()
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to list log entries: %w", err)
+		return nil, fmt.Errorf("failed to list log entries: %w", err)
 	}
 
 	// Convert response to our LogEntry format
@@ -200,17 +200,7 @@ func (c *Client) SearchLogs(req LogsRequest) ([]LogEntry, string, error) {
 		entries = append(entries, logEntry)
 	}
 
-	// Generate web link for GCP Cloud Logging console
-	webLink := c.generateWebLink(req.ProjectID, req.TraceID)
-
-	return entries, webLink, nil
+	return entries, nil
 }
 
-// generateWebLink generates a GCP Cloud Logging console link
-func (c *Client) generateWebLink(projectID, traceID string) string {
-	// URL encode the filter
-	encodedFilter := fmt.Sprintf("trace=%%22projects/%s/traces/%s%%22", projectID, traceID)
 
-	return fmt.Sprintf("https://console.cloud.google.com/logs/query;query=%s?project=%s",
-		encodedFilter, projectID)
-}

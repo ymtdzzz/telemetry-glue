@@ -83,7 +83,7 @@ func runTraces(flags *TracesFlags) error {
 	}
 
 	// Execute top traces search
-	traces, webLink, err := client.SearchTopTraces(newrelic.TopTracesRequest{
+	traces, err := client.SearchTopTraces(newrelic.TopTracesRequest{
 		Entity:    flags.Entity,
 		Attribute: flags.Field,
 		Value:     flags.Value,
@@ -113,8 +113,7 @@ func runTraces(flags *TracesFlags) error {
 
 	// Output results
 	result := output.TopTracesResult{
-		Traces:  traceSummaries,
-		WebLink: webLink,
+		Traces: traceSummaries,
 	}
 
 	return result.Print(format)

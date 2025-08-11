@@ -77,7 +77,7 @@ func runAttributes(flags *AttributesFlags) error {
 	}
 
 	// Execute search
-	values, webLink, err := client.SearchValues(newrelic.SearchValuesRequest{
+	values, err := client.SearchValues(newrelic.SearchValuesRequest{
 		Entity:    flags.Entity,
 		Attribute: flags.Field,
 		Query:     flags.Pattern,
@@ -92,8 +92,7 @@ func runAttributes(flags *AttributesFlags) error {
 
 	// Output results
 	result := output.SearchValuesResult{
-		Values:  values,
-		WebLink: webLink,
+		Values: values,
 	}
 
 	return result.Print(format)

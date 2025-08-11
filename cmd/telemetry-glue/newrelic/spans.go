@@ -81,7 +81,7 @@ func runSpans(flags *SpansFlags) error {
 	}
 
 	// Execute spans search
-	spans, webLink, err := client.SearchSpans(newrelic.SpansRequest{
+	spans, err := client.SearchSpans(newrelic.SpansRequest{
 		TraceID: flags.TraceID,
 		TimeRange: newrelic.TimeRange{
 			Start: timeRange.Start,
@@ -100,8 +100,7 @@ func runSpans(flags *SpansFlags) error {
 
 	// Create spans result
 	result := output.SpansResult{
-		Spans:   outputSpans,
-		WebLink: webLink,
+		Spans: outputSpans,
 	}
 
 	// Merge with existing data and output
