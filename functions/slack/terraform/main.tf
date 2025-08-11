@@ -27,3 +27,12 @@ resource "google_storage_bucket" "terraform_state" {
     }
   }
 }
+
+# Secret Manager for storing sensitive configuration
+module "secret_manager" {
+  source = "./modules/secret-manager"
+
+  project_id  = var.project_id
+  environment = var.environment
+  region      = var.region
+}
