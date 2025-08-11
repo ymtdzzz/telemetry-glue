@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ymtdzzz/telemetry-glue/internal/output"
+	"github.com/ymtdzzz/telemetry-glue/pkg/output"
 )
 
 // CombinedData represents the aggregated telemetry data from multiple sources

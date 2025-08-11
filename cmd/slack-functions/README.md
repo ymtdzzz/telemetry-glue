@@ -78,30 +78,22 @@ curl -X POST http://localhost:8080/AnalyzeTrace \
 
 ```bash
 # Slack Event handler
-gcloud functions deploy slack-event \
-  --runtime go123 \
+gcloud functions deploy telemetry-glue-slack-event \
+  --gen2 \
+  --runtime go124 \
   --trigger-http \
   --allow-unauthenticated \
-  --source cmd/slack-functions \
+  --source . \
   --entry-point SlackEvent
 
 # Analyze handler
-gcloud functions deploy analyze-trace \
-  --runtime go123 \
+gcloud functions deploy telemetry-glue-analyze-trace \
+  --gen2 \
+  --runtime go124 \
   --trigger-http \
   --allow-unauthenticated \
-  --source cmd/slack-functions \
+  --source . \
   --entry-point AnalyzeTrace
-```
-
-### Cloud Run Deployment (Recommended)
-
-```bash
-gcloud run deploy slack-functions \
-  --source cmd/slack-functions \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated
 ```
 
 ## Environment Variables

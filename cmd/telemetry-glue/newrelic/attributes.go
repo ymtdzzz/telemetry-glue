@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/common"
-	"github.com/ymtdzzz/telemetry-glue/internal/backend/newrelic"
-	"github.com/ymtdzzz/telemetry-glue/internal/output"
+	"github.com/ymtdzzz/telemetry-glue/pkg/backend/newrelic"
+	"github.com/ymtdzzz/telemetry-glue/pkg/output"
 )
 
 // AttributesFlags holds NewRelic-specific flags for attributes command

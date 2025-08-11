@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/common"
-	"github.com/ymtdzzz/telemetry-glue/internal/backend/gcp"
-	"github.com/ymtdzzz/telemetry-glue/internal/output"
-	"github.com/ymtdzzz/telemetry-glue/internal/pipeline"
+	"github.com/ymtdzzz/telemetry-glue/pkg/backend/gcp"
+	"github.com/ymtdzzz/telemetry-glue/pkg/output"
+	"github.com/ymtdzzz/telemetry-glue/pkg/pipeline"
 )
 
 // LogsFlags holds GCP-specific flags for logs command

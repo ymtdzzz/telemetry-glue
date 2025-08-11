@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ymtdzzz/telemetry-glue/internal/analyzer"
-	"github.com/ymtdzzz/telemetry-glue/internal/output"
+	"github.com/ymtdzzz/telemetry-glue/pkg/analyzer"
+	"github.com/ymtdzzz/telemetry-glue/pkg/output"
 )
 
 // PassthroughHandler handles stdin reading and data merging for pipeline commands

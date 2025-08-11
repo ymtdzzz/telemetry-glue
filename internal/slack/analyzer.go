@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/slack-go/slack"
-	"github.com/ymtdzzz/telemetry-glue/internal/analyzer"
-	"github.com/ymtdzzz/telemetry-glue/internal/backend/gcp"
-	"github.com/ymtdzzz/telemetry-glue/internal/backend/newrelic"
+	"github.com/ymtdzzz/telemetry-glue/pkg/analyzer"
+	"github.com/ymtdzzz/telemetry-glue/pkg/backend/gcp"
+	"github.com/ymtdzzz/telemetry-glue/pkg/backend/newrelic"
 )
 
 type Analyzer struct {
@@ -30,14 +30,40 @@ func NewAnalyzer(config *Config) *Analyzer {
 func (a *Analyzer) AnalyzeTrace(ctx context.Context, req *AnalyzeRequest) (*AnalyzeResponse, error) {
 	log.Printf("Starting analysis for trace_id: %s", req.TraceID)
 
+	// Parse from/to dates if provided
+	var fromTime, toTime time.Time
+	var err error
+	
+	if req.From != "" {
+		fromTime, err = ParseSlackWorkflowDate(req.From)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse 'from' date: %w", err)
+		}
+	} else {
+		// Default to 1 hour ago
+		fromTime = time.Now().Add(-1 * time.Hour)
+	}
+	
+	if req.To != "" {
+		toTime, err = ParseSlackWorkflowDate(req.To)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse 'to' date: %w", err)
+		}
+	} else {
+		// Default to now
+		toTime = time.Now()
+	}
+
+	log.Printf("Time range: %s to %s", fromTime.Format(time.RFC3339), toTime.Format(time.RFC3339))
+
 	// 1. Get trace data
-	spans, err := a.getTraceData(req.TraceID)
+	spans, err := a.getTraceData(req.TraceID, fromTime, toTime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get trace data: %w", err)
 	}
 
 	// 2. Get log data
-	logs, err := a.getLogData(req.TraceID)
+	logs, err := a.getLogData(req.TraceID, fromTime, toTime)
 	if err != nil {
 		log.Printf("Warning: failed to get log data: %v", err)
 		// Continue analysis even if logs cannot be retrieved
@@ -63,7 +89,7 @@ func (a *Analyzer) AnalyzeTrace(ctx context.Context, req *AnalyzeRequest) (*Anal
 	}, nil
 }
 
-func (a *Analyzer) getTraceData(traceID string) (string, error) {
+func (a *Analyzer) getTraceData(traceID string, fromTime, toTime time.Time) (string, error) {
 	switch a.config.TraceBackend {
 	case "newrelic":
 		// Environment variables must be set beforehand
@@ -72,10 +98,10 @@ func (a *Analyzer) getTraceData(traceID string) (string, error) {
 			return "", fmt.Errorf("failed to create NewRelic client: %w", err)
 		}
 
-		// Set time range (last 1 hour)
+		// Use provided time range
 		timeRange := newrelic.TimeRange{
-			Start: time.Now().Add(-1 * time.Hour),
-			End:   time.Now(),
+			Start: fromTime,
+			End:   toTime,
 		}
 
 		// Get spans
@@ -99,7 +125,7 @@ func (a *Analyzer) getTraceData(traceID string) (string, error) {
 	}
 }
 
-func (a *Analyzer) getLogData(traceID string) (string, error) {
+func (a *Analyzer) getLogData(traceID string, fromTime, toTime time.Time) (string, error) {
 	switch a.config.LogBackend {
 	case "gcp":
 		client, err := gcp.NewClient()
@@ -112,8 +138,8 @@ func (a *Analyzer) getLogData(traceID string) (string, error) {
 			ProjectID: a.config.GCPProjectID,
 			TraceID:   traceID,
 			Limit:     100,
-			StartTime: time.Now().Add(-1 * time.Hour),
-			EndTime:   time.Now(),
+			StartTime: fromTime,
+			EndTime:   toTime,
 		})
 		if err != nil {
 			return "", fmt.Errorf("failed to get logs from GCP: %w", err)

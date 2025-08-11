@@ -1,9 +1,17 @@
 package slack
 
+import (
+	"fmt"
+	"regexp"
+	"time"
+)
+
 type AnalyzeRequest struct {
 	TraceID  string `json:"trace_id"`
 	Channel  string `json:"channel"`
 	ThreadTS string `json:"thread_ts"`
+	From     string `json:"from,omitempty"`     // Slack workflow format: "August 10th, 2025 at 6:00 PM UTC"
+	To       string `json:"to,omitempty"`       // Slack workflow format: "August 10th, 2025 at 6:00 PM UTC"
 }
 
 type AnalyzeResponse struct {
@@ -39,4 +47,25 @@ type Config struct {
 	// VertexAI settings
 	VertexAIProjectID string `envconfig:"VERTEXAI_PROJECT_ID"`
 	VertexAILocation  string `envconfig:"VERTEXAI_LOCATION" default:"us-central1"`
+}
+
+// ParseSlackWorkflowDate parses Slack workflow date format like "August 10th, 2025 at 6:00 PM UTC"
+func ParseSlackWorkflowDate(dateStr string) (time.Time, error) {
+	if dateStr == "" {
+		return time.Time{}, nil
+	}
+
+	// Remove ordinal suffixes (1st, 2nd, 3rd, 4th, etc.)
+	re := regexp.MustCompile(`(\d)(st|nd|rd|th)`)
+	cleanedDate := re.ReplaceAllString(dateStr, "$1")
+
+	// Parse using Go's reference time format
+	layout := "January 2, 2006 at 3:04 PM MST"
+	
+	t, err := time.Parse(layout, cleanedDate)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to parse Slack date format '%s': %w", dateStr, err)
+	}
+
+	return t, nil
 }

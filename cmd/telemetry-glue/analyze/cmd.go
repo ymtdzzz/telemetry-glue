@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/ymtdzzz/telemetry-glue/internal/analyzer"
+	"github.com/ymtdzzz/telemetry-glue/pkg/analyzer"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )

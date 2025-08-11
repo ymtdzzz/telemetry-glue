@@ -96,7 +96,7 @@ import (
     "time"
 
     "github.com/ymtdzzz/telemetry-glue/pkg/telemetryglue"
-    "github.com/ymtdzzz/telemetry-glue/internal/backend"
+    "github.com/ymtdzzz/telemetry-glue/pkg/backend"
 )
 
 func main() {
