@@ -58,7 +58,9 @@ func handleAnalyzeTrace(w http.ResponseWriter, r *http.Request) {
 		// Send response
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errorResponse)
+		if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+			log.Printf("Failed to encode error response: %v", err)
+		}
 		return
 	}
 

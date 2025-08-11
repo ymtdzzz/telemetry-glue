@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/ymtdzzz/telemetry-glue/internal/analyzer"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Flags holds flags for analyze command
@@ -53,9 +55,15 @@ Examples:
 	cmd.Flags().StringVarP(&flags.Language, "language", "l", "en", "Output language (en, ja)")
 
 	// Mark required flags
-	cmd.MarkFlagRequired("type")
-	cmd.MarkFlagRequired("provider")
-	cmd.MarkFlagRequired("model")
+	if err := cmd.MarkFlagRequired("type"); err != nil {
+		panic(fmt.Sprintf("Failed to mark type flag as required: %v", err))
+	}
+	if err := cmd.MarkFlagRequired("provider"); err != nil {
+		panic(fmt.Sprintf("Failed to mark provider flag as required: %v", err))
+	}
+	if err := cmd.MarkFlagRequired("model"); err != nil {
+		panic(fmt.Sprintf("Failed to mark model flag as required: %v", err))
+	}
 
 	return cmd
 }
@@ -121,7 +129,11 @@ func runAnalyze(flags *Flags) error {
 
 	// Create analyzer
 	llmAnalyzer := analyzer.NewAnalyzer(provider, flags.Provider, flags.Model)
-	defer llmAnalyzer.Close()
+	defer func() {
+		if err := llmAnalyzer.Close(); err != nil {
+			fmt.Printf("Warning: Failed to close LLM analyzer: %v\n", err)
+		}
+	}()
 
 	// Perform analysis
 	ctx := context.Background()
@@ -134,7 +146,7 @@ func runAnalyze(flags *Flags) error {
 
 	// Output result
 	fmt.Println("\n" + strings.Repeat("=", 80))
-	fmt.Printf("# %s Analysis Report\n\n", strings.Title(flags.Type))
+	fmt.Printf("# %s Analysis Report\n\n", cases.Title(language.English).String(flags.Type))
 	fmt.Printf("**Provider:** %s (%s)\n", result.Provider, result.Model)
 	fmt.Printf("**Data Summary:** %s\n\n", result.Summary)
 	fmt.Println("## Analysis Results")

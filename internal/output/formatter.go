@@ -222,11 +222,12 @@ func (r SpansResult) printTable() error {
 				valueStr = v
 			case float64:
 				// Special formatting for timestamp
-				if key == "timestamp" {
+				switch key {
+				case "timestamp":
 					valueStr = fmt.Sprintf("%.0f (%s)", v, time.Unix(int64(v/1000), 0).Format("2006-01-02 15:04:05"))
-				} else if key == "duration.ms" {
+				case "duration.ms":
 					valueStr = fmt.Sprintf("%.3f ms", v)
-				} else {
+				default:
 					valueStr = fmt.Sprintf("%.6g", v)
 				}
 			case bool:

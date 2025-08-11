@@ -47,8 +47,12 @@ Examples:
 	common.AddCommonFlags(cmd, &flags.Common)
 
 	// Mark required flags
-	cmd.MarkFlagRequired("entity")
-	cmd.MarkFlagRequired("field")
+	if err := cmd.MarkFlagRequired("entity"); err != nil {
+		panic(fmt.Sprintf("Failed to mark entity flag as required: %v", err))
+	}
+	if err := cmd.MarkFlagRequired("field"); err != nil {
+		panic(fmt.Sprintf("Failed to mark field flag as required: %v", err))
+	}
 
 	return cmd
 }

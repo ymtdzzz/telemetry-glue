@@ -143,7 +143,11 @@ func (a *Analyzer) performAnalysis(ctx context.Context, spans, logs string) (str
 		if err != nil {
 			return "", fmt.Errorf("failed to create VertexAI provider: %w", err)
 		}
-		defer provider.Close()
+		defer func() {
+			if err := provider.Close(); err != nil {
+				log.Printf("Warning: Failed to close provider: %v", err)
+			}
+		}()
 
 		// Prepare analysis prompt
 		prompt := fmt.Sprintf(`

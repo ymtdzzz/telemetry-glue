@@ -70,13 +70,17 @@ func (h *Handler) handleSlashCommand(ctx context.Context, cmd *slack.SlashComman
 func (h *Handler) handleAnalyzeTrace(ctx context.Context, cmd *slack.SlashCommand) {
 	traceID := strings.TrimSpace(cmd.Text)
 	if traceID == "" {
-		h.postMessage(cmd.ChannelID, "❌ Please specify trace_id. Example: `/analyze-trace abc123def456`", "")
+		if _, err := h.postMessage(cmd.ChannelID, "❌ Please specify trace_id. Example: `/analyze-trace abc123def456`", ""); err != nil {
+			log.Printf("Failed to post message: %v", err)
+		}
 		return
 	}
 
 	// Basic validation for trace_id format (alphanumeric characters)
 	if !isValidTraceID(traceID) {
-		h.postMessage(cmd.ChannelID, "❌ Invalid trace_id format.", "")
+		if _, err := h.postMessage(cmd.ChannelID, "❌ Invalid trace_id format.", ""); err != nil {
+			log.Printf("Failed to post message: %v", err)
+		}
 		return
 	}
 
@@ -96,7 +100,9 @@ func (h *Handler) handleAnalyzeTrace(ctx context.Context, cmd *slack.SlashComman
 
 	if err := h.tasksClient.EnqueueAnalyzeTask(ctx, analyzeReq); err != nil {
 		log.Printf("Failed to enqueue task: %v", err)
-		h.postMessage(cmd.ChannelID, "❌ Failed to enqueue analysis task.", timestamp)
+		if _, err := h.postMessage(cmd.ChannelID, "❌ Failed to enqueue analysis task.", timestamp); err != nil {
+			log.Printf("Failed to post message: %v", err)
+		}
 		return
 	}
 

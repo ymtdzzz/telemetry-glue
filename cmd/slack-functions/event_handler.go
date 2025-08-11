@@ -54,7 +54,9 @@ func handleSlackEvent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "text")
-		w.Write([]byte(r.Challenge))
+		if _, err := w.Write([]byte(r.Challenge)); err != nil {
+			log.Printf("Failed to write challenge response: %v", err)
+		}
 		return
 	}
 
@@ -122,7 +124,11 @@ func handleAppMention(event *slackevents.AppMentionEvent, config *slackInternal.
 		postErrorMessage(config, event.Channel, timestamp, "❌ Failed to create tasks client.")
 		return
 	}
-	defer tasksClient.Close()
+	defer func() {
+		if err := tasksClient.Close(); err != nil {
+			log.Printf("Failed to close tasks client: %v", err)
+		}
+	}()
 
 	// Enqueue analysis task
 	analyzeReq := &slackInternal.AnalyzeRequest{

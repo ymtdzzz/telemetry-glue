@@ -31,6 +31,12 @@ go tool cover -html=coverage.out -o coverage.html
 # Format code
 go fmt ./...
 
+# Linting with golangci-lint
+golangci-lint run
+
+# Linting with fix mode
+golangci-lint run --fix
+
 # Static analysis
 go vet ./...
 

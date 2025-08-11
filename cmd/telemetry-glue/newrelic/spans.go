@@ -45,7 +45,9 @@ Examples:
 	common.AddCommonFlags(cmd, &flags.Common)
 
 	// Mark required flags
-	cmd.MarkFlagRequired("trace-id")
+	if err := cmd.MarkFlagRequired("trace-id"); err != nil {
+		panic(fmt.Sprintf("Failed to mark trace-id flag as required: %v", err))
+	}
 
 	return cmd
 }
