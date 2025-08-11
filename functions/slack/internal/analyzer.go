@@ -105,7 +105,7 @@ func (a *Analyzer) getTraceData(traceID string, fromTime, toTime time.Time) (str
 		}
 
 		// Get spans
-		spansResult, _, err := client.SearchSpans(newrelic.SpansRequest{
+		spansResult, err := client.SearchSpans(newrelic.SpansRequest{
 			TraceID:   traceID,
 			TimeRange: timeRange,
 		})
@@ -134,7 +134,7 @@ func (a *Analyzer) getLogData(traceID string, fromTime, toTime time.Time) (strin
 		}
 
 		// Get logs
-		logsResult, _, err := client.SearchLogs(gcp.LogsRequest{
+		logsResult, err := client.SearchLogs(gcp.LogsRequest{
 			ProjectID: a.config.GCPProjectID,
 			TraceID:   traceID,
 			Limit:     100,

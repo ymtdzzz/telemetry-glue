@@ -95,6 +95,8 @@ github.com/valyala/fastjson v1.6.4 h1:uAUNq9Z6ymTgGhcm0UynUAB6tlbakBrz6CQFax3BXV
 github.com/valyala/fastjson v1.6.4/go.mod h1:CLCAqky6SMuOcxStkYQvblddUtoRxhYMGLrsQns1aXY=
 github.com/ymtdzzz/telemetry-glue v0.0.0-20250811092242-ef0ad41839d9 h1:VoQlaVpk1OmochlKXq8CctEtJLrArLAe9wW2gyLlalw=
 github.com/ymtdzzz/telemetry-glue v0.0.0-20250811092242-ef0ad41839d9/go.mod h1:TejLGaNQlDHobI7zlEmNCTz24zKKWa2VrOsE/frxJ8c=
+github.com/ymtdzzz/telemetry-glue v0.0.0-20250811094131-adbbab2bc2f9 h1:ZfY/zrg4Y71Pw6m5IzOzhC0lC4ebhmTLAkAd0xpI6lo=
+github.com/ymtdzzz/telemetry-glue v0.0.0-20250811094131-adbbab2bc2f9/go.mod h1:TejLGaNQlDHobI7zlEmNCTz24zKKWa2VrOsE/frxJ8c=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=
 go.opentelemetry.io/auto/sdk v1.1.0/go.mod h1:3wSPjt5PWp2RhlCcmmOial7AvC4DQqZb7a7wCow3W8A=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0 h1:q4XOmH/0opmeuJtPsbFNivyl7bCt7yRBbeEm2sC/XtQ=

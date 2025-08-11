@@ -40,7 +40,7 @@ require (
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
 	github.com/valyala/fastjson v1.6.4 // indirect
-	github.com/ymtdzzz/telemetry-glue v0.0.0-20250811092242-ef0ad41839d9
+	github.com/ymtdzzz/telemetry-glue v0.0.0-20250811094131-adbbab2bc2f9
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
