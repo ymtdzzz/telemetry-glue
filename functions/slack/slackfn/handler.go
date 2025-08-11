@@ -159,17 +159,17 @@ func handleSlackCallback(w http.ResponseWriter, r *http.Request, event *slackeve
 func handleAppMention(event *slackevents.AppMentionEvent, config *slackInternal.Config) {
 	ctx := context.Background()
 
-	// Parse trace ID from message text
+	// Parse command arguments from message text
 	text := strings.TrimSpace(event.Text)
-	traceID := extractTraceID(text)
+	args := parseSlackCommand(text)
 
-	if traceID == "" {
-		postErrorMessage(config, event.Channel, event.TimeStamp, "❌ Please specify trace_id. Example: `@bot analyze abc123def456`")
+	if args.TraceID == "" {
+		postErrorMessage(config, event.Channel, event.TimeStamp, "❌ Please specify trace_id. Example: `@bot analyze abc123def456 type:duration`")
 		return
 	}
 
 	// Basic validation for trace_id format
-	if !isValidTraceID(traceID) {
+	if !isValidTraceID(args.TraceID) {
 		postErrorMessage(config, event.Channel, event.TimeStamp, "❌ Invalid trace_id format.")
 		return
 	}
@@ -199,9 +199,10 @@ func handleAppMention(event *slackevents.AppMentionEvent, config *slackInternal.
 
 	// Enqueue analysis task
 	analyzeReq := &slackInternal.AnalyzeRequest{
-		TraceID:  traceID,
-		Channel:  event.Channel,
-		ThreadTS: timestamp,
+		TraceID:      args.TraceID,
+		Channel:      event.Channel,
+		ThreadTS:     timestamp,
+		AnalysisType: args.AnalysisType, // Will be empty string if not specified, handled as default
 	}
 
 	if err := tasksClient.EnqueueAnalyzeTask(ctx, analyzeReq); err != nil {
@@ -210,14 +211,22 @@ func handleAppMention(event *slackevents.AppMentionEvent, config *slackInternal.
 		return
 	}
 
-	log.Printf("Analysis task enqueued for trace_id: %s, channel: %s", traceID, event.Channel)
+	log.Printf("Analysis task enqueued for trace_id: %s, channel: %s, type: %s", args.TraceID, event.Channel, args.AnalysisType)
 }
 
-func extractTraceID(text string) string {
-	// Remove bot mention and extract trace ID
-	// Expected format: "@bot analyze <trace_id>" or "@bot <trace_id>"
-	words := strings.Fields(text)
+// CommandArgs represents parsed command arguments
+type CommandArgs struct {
+	TraceID      string
+	AnalysisType string
+}
 
+func parseSlackCommand(text string) CommandArgs {
+	// Remove bot mention and parse arguments
+	// Expected format: "@bot analyze trace_id type:duration|error"
+	words := strings.Fields(text)
+	
+	args := CommandArgs{}
+	
 	for i, word := range words {
 		// Skip the bot mention (first word typically)
 		if i == 0 && strings.HasPrefix(word, "<@") {
@@ -227,13 +236,28 @@ func extractTraceID(text string) string {
 		if strings.ToLower(word) == "analyze" {
 			continue
 		}
+		
+		// Check for type: argument
+		if strings.HasPrefix(strings.ToLower(word), "type:") {
+			analysisType := strings.TrimPrefix(strings.ToLower(word), "type:")
+			if analysisType == "duration" || analysisType == "error" {
+				args.AnalysisType = analysisType
+			}
+			continue
+		}
+		
 		// Return first potential trace ID
-		if len(word) > 0 && isValidTraceID(word) {
-			return word
+		if len(word) > 0 && isValidTraceID(word) && args.TraceID == "" {
+			args.TraceID = word
 		}
 	}
+	
+	return args
+}
 
-	return ""
+func extractTraceID(text string) string {
+	args := parseSlackCommand(text)
+	return args.TraceID
 }
 
 func postErrorMessage(config *slackInternal.Config, channel, threadTS, message string) {

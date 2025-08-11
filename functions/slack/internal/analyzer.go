@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/slack-go/slack"
@@ -27,13 +28,89 @@ func NewAnalyzer(config *Config) *Analyzer {
 	}
 }
 
+// buildCombinedData creates CombinedData from raw trace and log data
+func (a *Analyzer) buildCombinedData(traceID string, fromTime, toTime time.Time) (*analyzer.CombinedData, error) {
+	aggregator := analyzer.NewDataAggregator()
+
+	// Get and process trace data
+	spansJSON, err := a.getTraceData(traceID, fromTime, toTime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get trace data: %w", err)
+	}
+
+	if spansJSON != "" {
+		if err := a.addSpansToAggregator(aggregator, spansJSON); err != nil {
+			return nil, fmt.Errorf("failed to add spans to aggregator: %w", err)
+		}
+	}
+
+	// Get and process log data
+	logsJSON, err := a.getLogData(traceID, fromTime, toTime)
+	if err != nil {
+		log.Printf("Warning: failed to get log data: %v", err)
+		// Continue analysis even if logs cannot be retrieved
+	} else if logsJSON != "" {
+		if err := a.addLogsToAggregator(aggregator, logsJSON); err != nil {
+			log.Printf("Warning: failed to add logs to aggregator: %v", err)
+			// Continue analysis even if logs cannot be processed
+		}
+	}
+
+	return aggregator.GetCombinedData(), nil
+}
+
+// addSpansToAggregator adds spans from JSON to the data aggregator
+func (a *Analyzer) addSpansToAggregator(aggregator *analyzer.DataAggregator, spansJSON string) error {
+	// Parse the spans result format from NewRelic
+	var spansResult map[string]interface{}
+	if err := json.Unmarshal([]byte(spansJSON), &spansResult); err != nil {
+		return fmt.Errorf("failed to parse spans JSON: %w", err)
+	}
+
+	// Create a JSON object with spans field to match expected format
+	dataObj := map[string]interface{}{
+		"spans": spansResult["spans"],
+	}
+
+	// Use the aggregator's addJSONObject method
+	reader := strings.NewReader(string(mustMarshal(dataObj)))
+	return aggregator.ReadFromStdin(reader)
+}
+
+// addLogsToAggregator adds logs from JSON to the data aggregator
+func (a *Analyzer) addLogsToAggregator(aggregator *analyzer.DataAggregator, logsJSON string) error {
+	// Parse the logs result format from GCP
+	var logsResult map[string]interface{}
+	if err := json.Unmarshal([]byte(logsJSON), &logsResult); err != nil {
+		return fmt.Errorf("failed to parse logs JSON: %w", err)
+	}
+
+	// Create a JSON object with logs field to match expected format
+	dataObj := map[string]interface{}{
+		"logs": logsResult["logs"],
+	}
+
+	// Use the aggregator's addJSONObject method
+	reader := strings.NewReader(string(mustMarshal(dataObj)))
+	return aggregator.ReadFromStdin(reader)
+}
+
+// mustMarshal marshals to JSON or panics
+func mustMarshal(v interface{}) []byte {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal JSON: %v", err))
+	}
+	return data
+}
+
 func (a *Analyzer) AnalyzeTrace(ctx context.Context, req *AnalyzeRequest) (*AnalyzeResponse, error) {
 	log.Printf("Starting analysis for trace_id: %s", req.TraceID)
 
 	// Parse from/to dates if provided
 	var fromTime, toTime time.Time
 	var err error
-	
+
 	if req.From != "" {
 		fromTime, err = ParseSlackWorkflowDate(req.From)
 		if err != nil {
@@ -43,7 +120,7 @@ func (a *Analyzer) AnalyzeTrace(ctx context.Context, req *AnalyzeRequest) (*Anal
 		// Default to 1 hour ago
 		fromTime = time.Now().Add(-1 * time.Hour)
 	}
-	
+
 	if req.To != "" {
 		toTime, err = ParseSlackWorkflowDate(req.To)
 		if err != nil {
@@ -56,22 +133,20 @@ func (a *Analyzer) AnalyzeTrace(ctx context.Context, req *AnalyzeRequest) (*Anal
 
 	log.Printf("Time range: %s to %s", fromTime.Format(time.RFC3339), toTime.Format(time.RFC3339))
 
-	// 1. Get trace data
-	spans, err := a.getTraceData(req.TraceID, fromTime, toTime)
+	// 1. Build combined data from traces and logs
+	combinedData, err := a.buildCombinedData(req.TraceID, fromTime, toTime)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get trace data: %w", err)
+		return nil, fmt.Errorf("failed to build combined data: %w", err)
 	}
 
-	// 2. Get log data
-	logs, err := a.getLogData(req.TraceID, fromTime, toTime)
-	if err != nil {
-		log.Printf("Warning: failed to get log data: %v", err)
-		// Continue analysis even if logs cannot be retrieved
-		logs = "[]"
+	// 2. Determine analysis type
+	analysisType := analyzer.AnalysisTypeDuration // default
+	if req.AnalysisType == "error" {
+		analysisType = analyzer.AnalysisTypeError
 	}
 
-	// 3. Perform LLM analysis
-	analysisResult, err := a.performAnalysis(ctx, spans, logs)
+	// 3. Perform LLM analysis using unified analyzer
+	analysisResult, err := a.performAnalysis(ctx, analysisType, combinedData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform analysis: %w", err)
 	}
@@ -85,7 +160,7 @@ func (a *Analyzer) AnalyzeTrace(ctx context.Context, req *AnalyzeRequest) (*Anal
 	return &AnalyzeResponse{
 		TraceID: req.TraceID,
 		Status:  "completed",
-		Result:  analysisResult,
+		Result:  analysisResult.Content,
 	}, nil
 }
 
@@ -126,6 +201,12 @@ func (a *Analyzer) getTraceData(traceID string, fromTime, toTime time.Time) (str
 }
 
 func (a *Analyzer) getLogData(traceID string, fromTime, toTime time.Time) (string, error) {
+	// Skip log collection if no backend is configured
+	if a.config.LogBackend == "" {
+		log.Printf("Log backend not configured, skipping log collection")
+		return "", nil
+	}
+
 	switch a.config.LogBackend {
 	case "gcp":
 		client, err := gcp.NewClient()
@@ -153,21 +234,22 @@ func (a *Analyzer) getLogData(traceID string, fromTime, toTime time.Time) (strin
 		return string(result), nil
 
 	default:
-		return "", fmt.Errorf("unsupported log backend: %s", a.config.LogBackend)
+		log.Printf("Unsupported log backend '%s', skipping log collection", a.config.LogBackend)
+		return "", nil
 	}
 }
 
-func (a *Analyzer) performAnalysis(ctx context.Context, spans, logs string) (string, error) {
+func (a *Analyzer) performAnalysis(ctx context.Context, analysisType analyzer.AnalysisType, data *analyzer.CombinedData) (*analyzer.AnalysisResult, error) {
 	switch a.config.LLMBackend {
 	case "vertexai":
 		// Create VertexAI provider
 		provider, err := analyzer.NewVertexAIProvider(
 			a.config.VertexAIProjectID,
 			a.config.VertexAILocation,
-			"gemini-1.5-flash", // Default model
+			"gemini-1.5-flash",
 		)
 		if err != nil {
-			return "", fmt.Errorf("failed to create VertexAI provider: %w", err)
+			return nil, fmt.Errorf("failed to create VertexAI provider: %w", err)
 		}
 		defer func() {
 			if err := provider.Close(); err != nil {
@@ -175,36 +257,44 @@ func (a *Analyzer) performAnalysis(ctx context.Context, spans, logs string) (str
 			}
 		}()
 
-		// Prepare analysis prompt
-		prompt := fmt.Sprintf(`
-Please analyze the following telemetry data and provide insights about potential issues, performance bottlenecks, or anomalies.
+		// Create unified analyzer using pkg/analyzer
+		unifiedAnalyzer := analyzer.NewAnalyzer(provider, "vertexai", "gemini-1.5-flash")
 
-Spans Data:
-%s
-
-Logs Data:
-%s
-
-Please provide:
-1. Summary of the trace flow
-2. Any detected issues or errors
-3. Performance analysis
-4. Recommendations for improvement
-`, spans, logs)
-
-		result, err := provider.GenerateContent(ctx, prompt)
+		// Perform analysis with language support
+		result, err := unifiedAnalyzer.AnalyzeWithLanguage(ctx, analysisType, data, a.config.AnalysisLanguage)
 		if err != nil {
-			return "", fmt.Errorf("failed to perform analysis: %w", err)
+			return nil, fmt.Errorf("failed to perform analysis: %w", err)
 		}
 
 		return result, nil
 
 	default:
-		return "", fmt.Errorf("unsupported LLM backend: %s", a.config.LLMBackend)
+		return nil, fmt.Errorf("unsupported LLM backend: %s", a.config.LLMBackend)
 	}
 }
-func (a *Analyzer) postResultToSlack(req *AnalyzeRequest, result string) error {
-	message := fmt.Sprintf("✅ **Trace Analysis Complete**\n\n**Trace ID:** `%s`\n\n**Analysis Result:**\n```\n%s\n```", req.TraceID, result)
+func (a *Analyzer) postResultToSlack(req *AnalyzeRequest, result *analyzer.AnalysisResult) error {
+	// Create enhanced message with analysis metadata
+	analysisTypeDisplay := "Performance"
+	if result.AnalysisType == "error" {
+		analysisTypeDisplay = "Error"
+	}
+
+	message := fmt.Sprintf(`✅ **%s Analysis Complete**
+
+**Trace ID:** %s
+**Data Summary:** %s
+**Provider:** %s (%s)
+
+**Analysis Result:**
+`+"```"+`
+%s
+`+"```",
+		analysisTypeDisplay,
+		req.TraceID,
+		result.Summary,
+		result.Provider,
+		result.Model,
+		result.Content)
 
 	_, _, err := a.slackClient.PostMessage(
 		req.Channel,

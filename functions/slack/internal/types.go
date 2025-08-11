@@ -7,11 +7,12 @@ import (
 )
 
 type AnalyzeRequest struct {
-	TraceID  string `json:"trace_id"`
-	Channel  string `json:"channel"`
-	ThreadTS string `json:"thread_ts"`
-	From     string `json:"from,omitempty"`     // Slack workflow format: "August 10th, 2025 at 6:00 PM UTC"
-	To       string `json:"to,omitempty"`       // Slack workflow format: "August 10th, 2025 at 6:00 PM UTC"
+	TraceID      string `json:"trace_id"`
+	Channel      string `json:"channel"`
+	ThreadTS     string `json:"thread_ts"`
+	From         string `json:"from,omitempty"`          // Slack workflow format: "August 10th, 2025 at 6:00 PM UTC"
+	To           string `json:"to,omitempty"`            // Slack workflow format: "August 10th, 2025 at 6:00 PM UTC"
+	AnalysisType string `json:"analysis_type,omitempty"` // "duration" or "error"
 }
 
 type AnalyzeResponse struct {
@@ -34,7 +35,7 @@ type Config struct {
 
 	// Backend settings
 	TraceBackend string `envconfig:"TRACE_BACKEND" default:"newrelic"`
-	LogBackend   string `envconfig:"LOG_BACKEND" default:"gcp"`
+	LogBackend   string `envconfig:"LOG_BACKEND"`
 	LLMBackend   string `envconfig:"LLM_BACKEND" default:"vertexai"`
 
 	// NewRelic settings
@@ -47,6 +48,9 @@ type Config struct {
 	// VertexAI settings
 	VertexAIProjectID string `envconfig:"VERTEXAI_PROJECT_ID"`
 	VertexAILocation  string `envconfig:"VERTEXAI_LOCATION" default:"us-central1"`
+
+	// Analysis settings
+	AnalysisLanguage string `envconfig:"ANALYSIS_LANGUAGE" default:"en"`
 }
 
 // ParseSlackWorkflowDate parses Slack workflow date format like "August 10th, 2025 at 6:00 PM UTC"
