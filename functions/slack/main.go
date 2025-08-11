@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
-	"github.com/ymtdzzz/telemetry-glue/internal/slackfn"
+	"github.com/ymtdzzz/telemetry-glue/functions/slack/slackfn"
 )
 
 func init() {

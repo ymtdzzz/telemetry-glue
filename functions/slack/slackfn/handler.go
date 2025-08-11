@@ -12,7 +12,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
-	slackInternal "github.com/ymtdzzz/telemetry-glue/internal/slack"
+	slackInternal "github.com/ymtdzzz/telemetry-glue/functions/slack/internal"
 )
 
 // HandleSlackEvent handles Slack events (app mentions, etc.)
