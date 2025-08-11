@@ -1,4 +1,4 @@
-package main
+package slack_fn
 
 import (
 	"log"
@@ -6,23 +6,24 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"github.com/ymtdzzz/telemetry-glue/internal/slackfn"
 )
 
 func init() {
 	// Register Slack event handler
-	functions.HTTP("SlackEvent", handleSlackEvent)
+	functions.HTTP("SlackEvent", slackfn.HandleSlackEvent)
 
 	// Register trace analysis handler
-	functions.HTTP("AnalyzeTrace", handleAnalyzeTrace)
+	functions.HTTP("AnalyzeTrace", slackfn.HandleAnalyzeTrace)
 }
 
+// main is only used for local development
 func main() {
-	// Use PORT environment variable, or default to 8080.
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Slack Functions listening on port %s", port)
+	log.Printf("Starting server on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
