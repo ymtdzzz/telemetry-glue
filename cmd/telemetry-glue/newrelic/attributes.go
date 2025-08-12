@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/common"
 	"github.com/ymtdzzz/telemetry-glue/pkg/backend/newrelic"
-	"github.com/ymtdzzz/telemetry-glue/pkg/output"
 )
 
 // AttributesFlags holds NewRelic-specific flags for attributes command
@@ -77,7 +76,7 @@ func runAttributes(flags *AttributesFlags) error {
 	}
 
 	// Execute search
-	values, err := client.SearchValues(newrelic.SearchValuesRequest{
+	values, err := client.Attributes(newrelic.AttributesRequest{
 		Entity:    flags.Entity,
 		Attribute: flags.Field,
 		Query:     flags.Pattern,
@@ -90,10 +89,5 @@ func runAttributes(flags *AttributesFlags) error {
 		return fmt.Errorf("failed to search values: %w", err)
 	}
 
-	// Output results
-	result := output.SearchValuesResult{
-		Values: values,
-	}
-
-	return result.Print(format)
+	return values.Print(format)
 }

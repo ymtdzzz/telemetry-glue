@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/common"
 	"github.com/ymtdzzz/telemetry-glue/pkg/backend/newrelic"
-	"github.com/ymtdzzz/telemetry-glue/pkg/output"
 	"github.com/ymtdzzz/telemetry-glue/pkg/pipeline"
 )
 
@@ -92,18 +91,7 @@ func runSpans(flags *SpansFlags) error {
 		return fmt.Errorf("failed to search spans: %w", err)
 	}
 
-	// Convert SpanInfo to Span (just pass the map as-is)
-	var outputSpans []output.Span
-	for _, span := range spans {
-		outputSpans = append(outputSpans, output.Span(span))
-	}
-
-	// Create spans result
-	result := output.SpansResult{
-		Spans: outputSpans,
-	}
-
 	// Merge with existing data and output
-	mergedData := passthroughHandler.MergeSpansResult(existingData, &result)
-	return passthroughHandler.OutputMergedResult(mergedData, &result, format)
+	mergedData := passthroughHandler.MergeSpansResult(existingData, spans)
+	return passthroughHandler.OutputMergedResult(mergedData, spans, format)
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/common"
 	"github.com/ymtdzzz/telemetry-glue/pkg/backend/newrelic"
-	"github.com/ymtdzzz/telemetry-glue/pkg/output"
 )
 
 // TracesFlags holds NewRelic-specific flags for traces command
@@ -83,7 +82,7 @@ func runTraces(flags *TracesFlags) error {
 	}
 
 	// Execute top traces search
-	traces, err := client.SearchTopTraces(newrelic.TopTracesRequest{
+	traces, err := client.SearchTraces(newrelic.TracesRequest{
 		Entity:    flags.Entity,
 		Attribute: flags.Field,
 		Value:     flags.Value,
@@ -97,24 +96,5 @@ func runTraces(flags *TracesFlags) error {
 		return fmt.Errorf("failed to search top traces: %w", err)
 	}
 
-	// Convert TraceInfo to TraceSummary
-	var traceSummaries []output.TraceSummary
-	for _, trace := range traces {
-		traceSummaries = append(traceSummaries, output.TraceSummary{
-			TraceID:   trace.TraceID,
-			StartTime: trace.StartTime,
-			Duration:  trace.Duration / 1000.0, // Convert ms to seconds
-			Attributes: map[string]interface{}{
-				"service.name": trace.ServiceName,
-				"span_count":   trace.SpanCount,
-			},
-		})
-	}
-
-	// Output results
-	result := output.TopTracesResult{
-		Traces: traceSummaries,
-	}
-
-	return result.Print(format)
+	return traces.Print(format)
 }

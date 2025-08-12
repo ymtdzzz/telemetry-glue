@@ -13,10 +13,10 @@ import (
 
 // CombinedData represents the aggregated telemetry data from multiple sources
 type CombinedData struct {
-	Spans  []output.Span         `json:"spans,omitempty"`
-	Logs   []output.LogEntry     `json:"logs,omitempty"`
-	Traces []output.TraceSummary `json:"traces,omitempty"`
-	Values []string              `json:"values,omitempty"`
+	Spans  []output.Span     `json:"spans,omitempty"`
+	Logs   []output.LogEntry `json:"logs,omitempty"`
+	Traces []output.Trace    `json:"traces,omitempty"`
+	Values []string          `json:"values,omitempty"`
 }
 
 // DataAggregator handles reading and combining JSON data from stdin
@@ -101,14 +101,14 @@ func (da *DataAggregator) addJSONObject(obj map[string]interface{}) error {
 		}
 	}
 
-	// Check if it's a TopTracesResult
+	// Check if it's a TracesResult
 	if traces, exists := obj["traces"]; exists {
 		if err := da.addTraces(traces); err != nil {
 			return fmt.Errorf("failed to add traces: %w", err)
 		}
 	}
 
-	// Check if it's a SearchValuesResult
+	// Check if it's a AttributesResult
 	if values, exists := obj["values"]; exists {
 		if err := da.addValues(values); err != nil {
 			return fmt.Errorf("failed to add values: %w", err)
@@ -157,7 +157,7 @@ func (da *DataAggregator) addTraces(traces interface{}) error {
 		return err
 	}
 
-	var tracesList []output.TraceSummary
+	var tracesList []output.Trace
 	if err := json.Unmarshal(tracesBytes, &tracesList); err != nil {
 		return err
 	}

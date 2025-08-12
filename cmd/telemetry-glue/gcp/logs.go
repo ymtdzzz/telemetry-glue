@@ -2,12 +2,10 @@ package gcp
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/ymtdzzz/telemetry-glue/cmd/telemetry-glue/common"
 	"github.com/ymtdzzz/telemetry-glue/pkg/backend/gcp"
-	"github.com/ymtdzzz/telemetry-glue/pkg/output"
 	"github.com/ymtdzzz/telemetry-glue/pkg/pipeline"
 )
 
@@ -92,7 +90,7 @@ func runLogs(flags *LogsFlags) error {
 	}
 
 	// Execute logs search
-	entries, err := client.SearchLogs(gcp.LogsRequest{
+	result, err := client.SearchLogs(gcp.LogsRequest{
 		ProjectID: flags.ProjectID,
 		TraceID:   flags.TraceID,
 		Limit:     flags.Limit,
@@ -103,81 +101,7 @@ func runLogs(flags *LogsFlags) error {
 		return fmt.Errorf("failed to search logs: %w", err)
 	}
 
-	// Convert GCP LogEntry to output LogEntry
-	var outputLogs []output.LogEntry
-	for _, entry := range entries {
-		logEntry := output.LogEntry{
-			Timestamp:  entry.Timestamp,
-			TraceID:    extractTraceID(entry.Trace),
-			SpanID:     entry.SpanID,
-			Attributes: make(map[string]interface{}),
-		}
-
-		// Determine message from payload
-		if entry.TextPayload != "" {
-			logEntry.Message = entry.TextPayload
-		} else if entry.JSONPayload != nil {
-			// Try to extract message from JSON payload
-			if msg, ok := entry.JSONPayload["message"].(string); ok {
-				logEntry.Message = msg
-			} else if msg, ok := entry.JSONPayload["msg"].(string); ok {
-				logEntry.Message = msg
-			} else {
-				// If no message field, use the entire JSON as string
-				logEntry.Message = fmt.Sprintf("JSON: %v", entry.JSONPayload)
-			}
-			// Add JSON payload to attributes
-			for k, v := range entry.JSONPayload {
-				if k != "message" && k != "msg" {
-					logEntry.Attributes[k] = v
-				}
-			}
-		} else if entry.ProtoPayload != nil {
-			logEntry.Message = fmt.Sprintf("Proto: %v", entry.ProtoPayload)
-			// Add proto payload to attributes
-			for k, v := range entry.ProtoPayload {
-				logEntry.Attributes[k] = v
-			}
-		}
-
-		// Add other fields to attributes
-		if entry.Severity != "" {
-			logEntry.Attributes["severity"] = entry.Severity
-		}
-		if entry.LogName != "" {
-			logEntry.Attributes["log_name"] = entry.LogName
-		}
-		if entry.Resource != nil {
-			logEntry.Attributes["resource"] = entry.Resource
-		}
-		if entry.Labels != nil {
-			for k, v := range entry.Labels {
-				logEntry.Attributes["label_"+k] = v
-			}
-		}
-
-		outputLogs = append(outputLogs, logEntry)
-	}
-
-	// Create logs result
-	result := output.LogsResult{
-		Logs: outputLogs,
-	}
-
 	// Merge with existing data and output
-	mergedData := passthroughHandler.MergeLogsResult(existingData, &result)
-	return passthroughHandler.OutputMergedResult(mergedData, &result, format)
-}
-
-// extractTraceID extracts the trace ID from the full trace resource path
-// e.g., "projects/my-project/traces/abc123" -> "abc123"
-func extractTraceID(traceResource string) string {
-	if traceResource == "" {
-		return ""
-	}
-	parts := strings.Split(traceResource, "/")
-	if len(parts) >= 4 && parts[2] == "traces" {
-		return parts[3]
-	}
-	return traceResource
+	mergedData := passthroughHandler.MergeLogsResult(existingData, result)
+	return passthroughHandler.OutputMergedResult(mergedData, result, format)
 }
