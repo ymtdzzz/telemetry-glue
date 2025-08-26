@@ -26,4 +26,4 @@ coverage.html
 *.temp
 
 # Serena
-.serena/cache/*
+.serena
