@@ -1,4 +1,4 @@
-package main
+package trace
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -23,42 +24,64 @@ const (
 	serviceVersion = "1.0.0"
 )
 
-func main() {
+var newrelicTraceCmd = &cobra.Command{
+	Use:   "newrelic",
+	Short: "Send test traces to New Relic",
+	Long:  `Send test OpenTelemetry traces to New Relic via OTLP`,
+	RunE:  runNewRelicTrace,
+}
+
+var (
+	newrelicAPIKey   string
+	newrelicEndpoint string
+	traceCount       int
+)
+
+func init() {
+	newrelicTraceCmd.Flags().StringVar(&newrelicAPIKey, "api-key", "", "New Relic Ingest API Key (or set NEW_RELIC_INGEST_API_KEY env var)")
+	newrelicTraceCmd.Flags().StringVar(&newrelicEndpoint, "endpoint", "otlp.nr-data.net:4318", "New Relic OTLP endpoint")
+	newrelicTraceCmd.Flags().IntVar(&traceCount, "count", 3, "Number of test traces to send")
+}
+
+func runNewRelicTrace(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	// Load .env file (only when ENV is not "production")
-	if env := os.Getenv("ENV"); env != "production" {
-		if err := godotenv.Load(); err != nil {
-			log.Printf("Warning: Could not load .env file: %v", err)
-		}
+	if err := godotenv.Load(); err != nil {
+		return fmt.Errorf("Warning: Could not load .env file: %v", err)
 	}
 
-	// Get NewRelic configuration from environment variables
-	apiKey := os.Getenv("NEW_RELIC_INGEST_API_KEY")
+	// Get API key from flag or environment
+	apiKey := newrelicAPIKey
 	if apiKey == "" {
-		log.Fatal("NEW_RELIC_INGEST_API_KEY environment variable is required")
+		apiKey = os.Getenv("NEW_RELIC_INGEST_API_KEY")
+	}
+	if apiKey == "" {
+		return fmt.Errorf("NEW_RELIC_INGEST_API_KEY is required (use --api-key flag or environment variable)")
 	}
 
-	endpoint := os.Getenv("NEW_RELIC_OTLP_ENDPOINT")
-	if endpoint == "" {
-		endpoint = "otlp.nr-data.net:4318"
+	// Get endpoint
+	endpoint := newrelicEndpoint
+	if envEndpoint := os.Getenv("NEW_RELIC_OTLP_ENDPOINT"); envEndpoint != "" {
+		endpoint = envEndpoint
 	}
 
 	// Initialize OpenTelemetry
 	tp, err := initTracer(ctx, apiKey, endpoint)
 	if err != nil {
-		log.Fatalf("Failed to initialize tracer: %v", err)
+		return fmt.Errorf("failed to initialize tracer: %w", err)
 	}
 	defer func() {
-		// Nothing to do here - shutdown is handled in main()
+		if err := tp.Shutdown(ctx); err != nil {
+			log.Printf("Error shutting down tracer provider: %v", err)
+		}
 	}()
 
 	tracer := otel.Tracer("test-tracer")
 
 	// Send test traces to NewRelic
-	fmt.Println("Sending test traces to NewRelic...")
+	fmt.Printf("Sending %d test traces to NewRelic...\n", traceCount)
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < traceCount; i++ {
 		if err := sendTestTrace(ctx, tracer, i+1); err != nil {
 			log.Printf("Failed to send trace %d: %v", i+1, err)
 		} else {
@@ -70,10 +93,11 @@ func main() {
 	// Wait for TracerProvider shutdown
 	fmt.Println("Flushing traces...")
 	if err := tp.Shutdown(ctx); err != nil {
-		log.Printf("Error shutting down tracer provider: %v", err)
-	} else {
-		fmt.Println("All test traces sent. Check NewRelic dashboard for results.")
+		return fmt.Errorf("error shutting down tracer provider: %w", err)
 	}
+
+	fmt.Println("All test traces sent. Check NewRelic dashboard for results.")
+	return nil
 }
 
 func initTracer(ctx context.Context, apiKey, endpoint string) (*sdktrace.TracerProvider, error) {
