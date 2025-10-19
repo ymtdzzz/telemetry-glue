@@ -1,21 +1,37 @@
-package newrelic
+package backend
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"maps"
 	"time"
 
+	"github.com/newrelic/newrelic-client-go/v2/pkg/config"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/nerdgraph"
-	"github.com/ymtdzzz/telemetry-glue/pkg/output"
+	gconfig "github.com/ymtdzzz/telemetry-glue/pkg/app/config"
+	"github.com/ymtdzzz/telemetry-glue/pkg/app/model"
 )
 
-// SpansRequest represents a request to search for spans in NewRelic
-type SpansRequest struct {
-	TraceID   string // Trace ID to get spans from
-	TimeRange TimeRange
+// NewRelicBackend represents a NewRelic backend
+type NewRelicBackend struct {
+	client    *nerdgraph.NerdGraph
+	accountID int
 }
 
-// SearchSpans searches for all spans within a specific trace
-func (c *Client) SearchSpans(req SpansRequest) (*output.SpansResult, error) {
+// NewNewRelicBackend creates a new NewRelic backend
+func NewNewRelicBackend(cfg *gconfig.NewRelicConfig) *NewRelicBackend {
+	nrcfg := config.New()
+	nrcfg.PersonalAPIKey = cfg.APIKey
+	client := nerdgraph.New(nrcfg)
+
+	return &NewRelicBackend{
+		client:    &client,
+		accountID: cfg.AccountID,
+	}
+}
+
+func (n *NewRelicBackend) SearchSpans(ctx context.Context, req *SearchSpansRequest) (model.Spans, error) {
 	// Calculate time range in minutes from current time
 	timeSinceStart := time.Since(req.TimeRange.Start).Minutes()
 	timeSinceEnd := time.Since(req.TimeRange.End).Minutes()
@@ -44,73 +60,72 @@ func (c *Client) SearchSpans(req SpansRequest) (*output.SpansResult, error) {
 			}
 		}`
 
-	variables := map[string]interface{}{
-		"accountId": c.accountID,
+	variables := map[string]any{
+		"accountId": n.accountID,
 		"nrqlQuery": nrqlQuery,
 	}
 
 	// Execute the query
-	resp, err := c.client.Query(graphqlQuery, variables)
+	resp, err := n.client.Query(graphqlQuery, variables)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute NerdGraph query: %w", err)
 	}
 
 	// Parse the response
-	spans, err := c.parseSpansResponse(resp)
+	spans, err := n.parseSpansResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return &output.SpansResult{
-		Spans: spans,
-	}, nil
+	return spans, nil
 }
 
 // parseSpansResponse parses the NerdGraph response for SearchSpans
-func (c *Client) parseSpansResponse(resp interface{}) ([]output.Span, error) {
+func (n *NewRelicBackend) parseSpansResponse(resp any) (model.Spans, error) {
 	// First, assert the response as QueryResponse type
 	queryResp, ok := resp.(nerdgraph.QueryResponse)
 	if !ok {
 		return nil, fmt.Errorf("unexpected response type: %T", resp)
 	}
 
-	// Parse the Actor field as map[string]interface{}
-	actor, ok := queryResp.Actor.(map[string]interface{})
+	// Parse the Actor field as map[string]any
+	actor, ok := queryResp.Actor.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("actor not found in response")
 	}
 
-	account, ok := actor["account"].(map[string]interface{})
+	account, ok := actor["account"].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("account not found in response")
 	}
 
-	nrql, ok := account["nrql"].(map[string]interface{})
+	nrql, ok := account["nrql"].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("nrql not found in response")
 	}
 
-	results, ok := nrql["results"].([]interface{})
+	results, ok := nrql["results"].([]any)
 	if !ok {
 		return nil, fmt.Errorf("results not found in response")
 	}
 
-	var spans []output.Span
+	var spans model.Spans
 
 	for _, result := range results {
-		resultMap, ok := result.(map[string]interface{})
+		resultMap, ok := result.(map[string]any)
 		if !ok {
 			continue
 		}
 
-		// Create SpanInfo as a map containing all the data from NewRelic
-		span := make(output.Span)
-		for key, value := range resultMap {
-			span[key] = value
-		}
+		span := make(model.Span)
+		maps.Copy(span, resultMap)
 
 		spans = append(spans, span)
 	}
 
 	return spans, nil
+}
+
+func (n *NewRelicBackend) SearchLogs(ctx context.Context, req *SearchLogsRequest) (model.Logs, error) {
+	return nil, errors.New("not implemented")
 }
