@@ -76,6 +76,6 @@ Please provide the analysis report in Japanese. Keep technical terms, metrics, a
 }
 
 // generateErrorPrompt generates a prompt for error analysis
-func generateErrorPrompt(telemetry *model.Telemetry, language string) (string, error) {
+func generateErrorPrompt(_ *model.Telemetry, _ string) (string, error) {
 	return "", errors.New("error analysis prompt generation not implemented yet")
 }

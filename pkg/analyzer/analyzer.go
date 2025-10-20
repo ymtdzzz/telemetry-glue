@@ -35,7 +35,7 @@ func NewAnalyzer(config *config.AnalyzerConfig) (*Analyzer, error) {
 
 // AnalyzeDuration generates a report based on the provided telemetry data and prompt
 func (a *Analyzer) AnalyzeDuration(ctx context.Context, telemetry *model.Telemetry) (string, error) {
-	prompt, err := generateDurationPrompt(telemetry, a.language)
+	prompt, err := generatePrompt(AnalysisTypeDuration, telemetry, a.language)
 	if err != nil {
 		return "", err
 	}
