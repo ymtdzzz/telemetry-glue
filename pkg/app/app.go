@@ -62,6 +62,11 @@ func (a *App) RunDuration(ctx context.Context, queryOnly bool) error {
 		return nil
 	}
 
+	// if len(telemetry.Spans) == 0 && len(telemetry.Logs) == 0 {
+	// 	a.logger.Log("No telemetry data found; skipping analysis.")
+	// 	return nil
+	// }
+
 	report, err := a.analyzer.AnalyzeDuration(ctx, telemetry)
 	if err != nil {
 		a.logger.Log("Error during analysis: " + err.Error())

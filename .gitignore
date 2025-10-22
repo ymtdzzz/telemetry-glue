@@ -27,3 +27,6 @@ coverage.html
 
 # Serena
 .serena
+
+# config file
+config.yml

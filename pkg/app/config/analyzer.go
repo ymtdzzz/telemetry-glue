@@ -12,9 +12,8 @@ const (
 )
 
 type AnalyzerConfig struct {
-	Language string          `yaml:"language"` // en, ja
-	VertexAI *VertexAIConfig `yaml:"vertex_ai,omitempty"`
-	Gemini   *GeminiConfig   `yaml:"gemini,omitempty"`
+	Language string        `yaml:"language"` // en, ja
+	Ollama   *OllamaConfig `yaml:"ollama,omitempty"`
 }
 
 func (c *AnalyzerConfig) validate() error {
@@ -25,38 +24,20 @@ func (c *AnalyzerConfig) validate() error {
 		return errors.New("unsupported language")
 	}
 
-	if c.VertexAI != nil {
-		if err := c.VertexAI.validate(); err != nil {
-			return err
-		}
+	if c.Ollama != nil {
+		return c.Ollama.validate()
 	}
-	if c.Gemini != nil {
-		if err := c.Gemini.validate(); err != nil {
-			return err
-		}
-	}
-	return nil
+
+	return errors.New("no valid analyzer backend configuration found")
 }
 
-type VertexAIConfig struct {
-	ProjectID string `yaml:"project_id"`
-	Location  string `yaml:"location"`
+type OllamaConfig struct {
 	ModelName string `yaml:"model_name"`
 }
 
-func (c *VertexAIConfig) validate() error {
-	if c.ProjectID == "" {
-		return errors.New("Vertex AI Project ID is required")
-	}
-	if c.Location == "" {
-		return errors.New("Vertex AI Location is required")
-	}
+func (c *OllamaConfig) validate() error {
 	if c.ModelName == "" {
-		return errors.New("Vertex AI Model Name is required")
+		return errors.New("Ollama Model Name is required")
 	}
 	return nil
-}
-
-type GeminiConfig struct {
-	*VertexAIConfig
 }

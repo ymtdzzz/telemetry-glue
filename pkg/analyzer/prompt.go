@@ -6,23 +6,24 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tmc/langchaingo/llms"
 	"github.com/ymtdzzz/telemetry-glue/pkg/app/config"
 	"github.com/ymtdzzz/telemetry-glue/pkg/app/model"
 )
 
-func generatePrompt(analysisType AnalysisType, telemetry *model.Telemetry, language string) (string, error) {
+func generatePrompt(analysisType AnalysisType, telemetry *model.Telemetry, language string) ([]llms.MessageContent, error) {
 	switch analysisType {
 	case AnalysisTypeDuration:
 		return generateDurationPrompt(telemetry, language)
 	case AnalysisTypeError:
 		return generateErrorPrompt(telemetry, language)
 	default:
-		return "", fmt.Errorf("unsupported analysis type: %s", analysisType)
+		return []llms.MessageContent{}, fmt.Errorf("unsupported analysis type: %s", analysisType)
 	}
 }
 
 // generateDurationPrompt generates a prompt for performance/duration analysis
-func generateDurationPrompt(telemetry *model.Telemetry, language string) (string, error) {
+func generateDurationPrompt(telemetry *model.Telemetry, language string) ([]llms.MessageContent, error) {
 	earliest, latest := telemetry.TimeRange()
 	timeRange := ""
 	if !earliest.IsZero() && !latest.IsZero() {
@@ -34,10 +35,11 @@ func generateDurationPrompt(telemetry *model.Telemetry, language string) (string
 
 	dataJSON, err := json.MarshalIndent(telemetry, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal data to JSON: %w", err)
+		return []llms.MessageContent{}, fmt.Errorf("failed to marshal data to JSON: %w", err)
 	}
 
-	prompt := fmt.Sprintf(`You are an expert in observability and performance analysis. Please analyze the following telemetry data for performance issues and bottlenecks.
+	system := "You are an expert in observability and performance analysis."
+	prompt := fmt.Sprintf(`Please analyze the following telemetry data for performance issues and bottlenecks.
 
 ## Data Summary
 - Spans: %d entries
@@ -64,18 +66,24 @@ Please structure your response as a markdown report with clear sections and bull
 		timeRange,
 		string(dataJSON))
 
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, system),
+		llms.TextParts(llms.ChatMessageTypeHuman, prompt),
+	}
+
 	// Add language-specific instructions
 	if language == string(config.LanguageJapanese) {
-		prompt += `
+		extraPrompt := `
 
 ## Language Instructions
 Please provide the analysis report in Japanese. Keep technical terms, metrics, and code snippets in English where appropriate. Structure the report with Japanese headers and explanations.`
+		content = append(content, llms.TextParts(llms.ChatMessageTypeHuman, extraPrompt))
 	}
 
-	return prompt, nil
+	return content, nil
 }
 
 // generateErrorPrompt generates a prompt for error analysis
-func generateErrorPrompt(_ *model.Telemetry, _ string) (string, error) {
-	return "", errors.New("error analysis prompt generation not implemented yet")
+func generateErrorPrompt(_ *model.Telemetry, _ string) ([]llms.MessageContent, error) {
+	return []llms.MessageContent{}, errors.New("error analysis prompt generation not implemented yet")
 }
