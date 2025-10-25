@@ -29,7 +29,8 @@ func NewAnalyzer(config *config.AnalyzerConfig) (*Analyzer, error) {
 		return nil, err
 	}
 	return &Analyzer{
-		backend: &backend,
+		backend:  &backend,
+		language: config.Language,
 	}, nil
 }
 
