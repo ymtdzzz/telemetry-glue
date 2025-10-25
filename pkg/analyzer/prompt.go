@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -33,9 +32,9 @@ func generateDurationPrompt(telemetry *model.Telemetry, language string) ([]llms
 			latest.Sub(earliest))
 	}
 
-	dataJSON, err := json.MarshalIndent(telemetry, "", "  ")
+	spansCSV, logsCSV, err := telemetry.AsCSV()
 	if err != nil {
-		return []llms.MessageContent{}, fmt.Errorf("failed to marshal data to JSON: %w", err)
+		return []llms.MessageContent{}, fmt.Errorf("failed to convert telemetry to CSV: %w", err)
 	}
 
 	system := "You are an expert in observability and performance analysis."
@@ -60,11 +59,17 @@ Please provide a comprehensive performance analysis including:
 Please structure your response as a markdown report with clear sections and bullet points.
 
 ## Telemetry Data
+### Spans (CSV)
+%s
+
+### Logs (CSV)
 %s`,
 		len(telemetry.Spans),
 		len(telemetry.Logs),
 		timeRange,
-		string(dataJSON))
+		spansCSV,
+		logsCSV,
+	)
 
 	content := []llms.MessageContent{
 		llms.TextParts(llms.ChatMessageTypeSystem, system),

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"maps"
-	"time"
 
 	"github.com/newrelic/newrelic-client-go/v2/pkg/config"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/nerdgraph"
@@ -32,21 +32,19 @@ func NewNewRelicBackend(cfg *gconfig.NewRelicConfig) *NewRelicBackend {
 }
 
 func (n *NewRelicBackend) SearchSpans(ctx context.Context, req *SearchSpansRequest) (model.Spans, error) {
-	// Calculate time range in minutes from current time
-	timeSinceStart := time.Since(req.TimeRange.Start).Minutes()
-	timeSinceEnd := time.Since(req.TimeRange.End).Minutes()
-
 	// Build NRQL query to get all spans for the trace
 	nrqlQuery := fmt.Sprintf(`
 		SELECT * 
 		FROM Span 
 		WHERE trace.id = '%s' 
-		SINCE %d minutes ago UNTIL %d minutes ago 
+		SINCE %d UNTIL %d 
 		ORDER BY timestamp ASC`,
 		req.TraceID,
-		int(timeSinceStart),
-		int(timeSinceEnd),
+		req.TimeRange.Start.UnixMilli(),
+		req.TimeRange.End.UnixMilli(),
 	)
+
+	log.Printf("Executing NRQL query: %s", nrqlQuery)
 
 	// Build GraphQL query
 	graphqlQuery := `

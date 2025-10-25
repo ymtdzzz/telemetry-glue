@@ -8,11 +8,11 @@ import (
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/ollama"
 	"github.com/ymtdzzz/telemetry-glue/pkg/app/config"
-	"golang.org/x/sync/errgroup"
 )
 
 type Ollama struct {
-	llm *ollama.LLM
+	llm       *ollama.LLM
+	modelName string
 }
 
 func NewOllama(config *config.OllamaConfig) (*Ollama, error) {
@@ -22,7 +22,8 @@ func NewOllama(config *config.OllamaConfig) (*Ollama, error) {
 	}
 
 	return &Ollama{
-		llm: llm,
+		llm:       llm,
+		modelName: config.ModelName,
 	}, nil
 }
 
@@ -30,29 +31,30 @@ func (o *Ollama) GenerateReport(
 	ctx context.Context,
 	content []llms.MessageContent,
 ) (string, error) {
-	g := new(errgroup.Group)
 	chunks := make(chan string)
+	errChan := make(chan error, 1)
+	var result strings.Builder
 
-	g.Go(func() error {
+	go func() {
 		defer close(chunks)
 		_, err := o.llm.GenerateContent(ctx, content, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
 			log.Print(string(chunk))
-			chunks <- string(chunk)
+			select {
+			case chunks <- string(chunk):
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 			return nil
 		}))
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+		errChan <- err
+	}()
 
-	if err := g.Wait(); err != nil {
-		return "", err
-	}
-
-	var result strings.Builder
 	for chunk := range chunks {
 		result.WriteString(chunk)
+	}
+
+	if err := <-errChan; err != nil {
+		return "", err
 	}
 
 	return result.String(), nil

@@ -62,10 +62,10 @@ func (a *App) RunDuration(ctx context.Context, queryOnly bool) error {
 		return nil
 	}
 
-	// if len(telemetry.Spans) == 0 && len(telemetry.Logs) == 0 {
-	// 	a.logger.Log("No telemetry data found; skipping analysis.")
-	// 	return nil
-	// }
+	if len(telemetry.Spans) == 0 && len(telemetry.Logs) == 0 {
+		a.logger.Log("No telemetry data found; skipping analysis.")
+		return nil
+	}
 
 	report, err := a.analyzer.AnalyzeDuration(ctx, telemetry)
 	if err != nil {
@@ -96,7 +96,12 @@ func (a *App) executeGlue(ctx context.Context) (*model.Telemetry, error) {
 		a.logger.Log("Error executing glue: " + err.Error())
 		return nil, err
 	}
-	a.logger.Log(fmt.Sprintf("Fetched %d spans and %d logs!", len(telemetry.Spans), len(telemetry.Logs)))
+	tokenCount, err := telemetry.RoughTokenEstimate()
+	if err != nil {
+		a.logger.Log("Error estimating token count: " + err.Error())
+		return nil, err
+	}
+	a.logger.Log(fmt.Sprintf("Fetched %d spans and %d logs! Roughly estimated token count: %d", len(telemetry.Spans), len(telemetry.Logs), tokenCount))
 
 	return telemetry, nil
 }
