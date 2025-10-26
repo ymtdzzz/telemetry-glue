@@ -4,7 +4,7 @@ go 1.24.5
 
 require (
 	github.com/slack-go/slack v0.17.3
-	github.com/ymtdzzz/telemetry-glue v0.0.0-20251025091932-3855df3fa203
+	github.com/ymtdzzz/telemetry-glue v0.0.0-20251026123914-2230802ff7a0
 )
 
 require (

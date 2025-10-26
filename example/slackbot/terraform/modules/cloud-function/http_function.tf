@@ -5,6 +5,13 @@ resource "google_service_account" "http_function" {
   description  = "Service account for Slack bot HTTP Cloud Functions in ${var.environment} environment"
 }
 
+resource "google_secret_manager_secret_iam_member" "http_slack_bot_token_accessor" {
+  project   = var.project_id
+  secret_id = var.secret_ids.slack_bot_token
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.http_function.email}"
+}
+
 resource "google_secret_manager_secret_iam_member" "http_slack_verification_token_accessor" {
   project   = var.project_id
   secret_id = var.secret_ids.slack_verification_token
@@ -52,6 +59,13 @@ resource "google_cloudfunctions2_function" "http_function" {
     environment_variables = {
       GCP_PROJECT_ID      = var.project_id
       GCP_PUBSUB_TOPIC_ID = google_pubsub_topic.slack_topic.id
+    }
+
+    secret_environment_variables {
+      key        = "SLACK_BOT_TOKEN"
+      project_id = var.project_id
+      secret     = var.secret_ids.slack_bot_token
+      version    = "latest"
     }
 
     secret_environment_variables {
