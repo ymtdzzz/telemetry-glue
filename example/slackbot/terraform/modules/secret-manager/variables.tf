@@ -1,5 +1,5 @@
 variable "project_id" {
-  description = "The GCP project ID"
+  description = "GCP project ID"
   type        = string
 }
 
@@ -8,8 +8,8 @@ variable "environment" {
   type        = string
 }
 
-variable "region" {
-  description = "The GCP region"
+variable "prefix" {
+  description = "Prefix for resource names"
   type        = string
-  default     = "asia-northeast1"
+  default     = "telemetry-glue"
 }

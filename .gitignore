@@ -30,3 +30,9 @@ coverage.html
 
 # config file
 config.yml
+
+# Terraform artifacts
+.terraform/
+*.tfstate
+*.tfvars
+function_src.zip

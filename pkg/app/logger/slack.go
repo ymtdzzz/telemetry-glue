@@ -4,16 +4,16 @@ import "github.com/slack-go/slack"
 
 // SlackLogger is a logger that sends logs to a Slack channel
 type SlackLogger struct {
-	client    *slack.Client
-	channelID string
-	threadTS  string
+	client      *slack.Client
+	channelID   string
+	responseURL string
 }
 
-func NewSlackLogger(client *slack.Client, channelID, threadTS string) *SlackLogger {
+func NewSlackLogger(client *slack.Client, channelID, responseURL string) *SlackLogger {
 	return &SlackLogger{
-		client:    client,
-		channelID: channelID,
-		threadTS:  threadTS,
+		client:      client,
+		channelID:   channelID,
+		responseURL: responseURL,
 	}
 }
 
