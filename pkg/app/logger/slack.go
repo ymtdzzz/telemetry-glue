@@ -21,7 +21,7 @@ func (l *SlackLogger) Log(message string) error {
 	_, _, err := l.client.PostMessage(
 		l.channelID,
 		slack.MsgOptionText(message, false),
-		slack.MsgOptionTS(l.threadTS),
+		slack.MsgOptionResponseURL(l.responseURL, "in_channel"),
 	)
 	return err
 }
