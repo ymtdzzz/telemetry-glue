@@ -9,8 +9,8 @@ import (
 )
 
 type AppConfig struct {
-	Glue     *GlueConfig     `yaml:"glue,omitempty"`
-	Analyzer *AnalyzerConfig `yaml:"analyzer,omitempty"`
+	Glue     *GlueConfig     `yaml:"glue,omitempty" envPrefix:"GLUE_"`
+	Analyzer *AnalyzerConfig `yaml:"analyzer,omitempty" envPrefix:"ANALYZER_"`
 }
 
 func LoadConfig(path string) (*AppConfig, error) {

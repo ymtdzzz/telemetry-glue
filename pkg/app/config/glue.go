@@ -9,9 +9,9 @@ const (
 )
 
 type GlueConfig struct {
-	NewRelic    *NewRelicConfig `yaml:"newrelic,omitempty"`
-	SpanBackend BackendType     `yaml:"span"`
-	LogBackend  BackendType     `yaml:"log"`
+	NewRelic    *NewRelicConfig `yaml:"newrelic,omitempty" envPrefix:"NEW_RELIC_"`
+	SpanBackend BackendType     `yaml:"span" env:"SPAN_BACKEND"`
+	LogBackend  BackendType     `yaml:"log" env:"LOG_BACKEND"`
 }
 
 func (c *GlueConfig) validate() error {
@@ -32,8 +32,8 @@ func (c *GlueConfig) validate() error {
 }
 
 type NewRelicConfig struct {
-	APIKey    string `yaml:"api_key" env:"NEW_RELIC_API_KEY"`
-	AccountID int    `yaml:"account_id" env:"NEW_RELIC_ACCOUNT_ID"`
+	APIKey    string `yaml:"api_key" env:"API_KEY"`
+	AccountID int    `yaml:"account_id" env:"ACCOUNT_ID"`
 }
 
 func (c *NewRelicConfig) validate() error {
