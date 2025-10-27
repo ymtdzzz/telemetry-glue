@@ -12,9 +12,10 @@ const (
 )
 
 type AnalyzerConfig struct {
-	Language string        `yaml:"language" env:"LANGUAGE"` // en, ja
-	Ollama   *OllamaConfig `yaml:"ollama,omitempty" envPrefix:"OLLAMA_"`
-	Gemini   *GeminiConfig `yaml:"gemini,omitempty" envPrefix:"GEMINI_"`
+	Language string          `yaml:"language" env:"LANGUAGE"` // en, ja
+	Ollama   *OllamaConfig   `yaml:"ollama,omitempty" envPrefix:"OLLAMA_"`
+	Gemini   *GeminiConfig   `yaml:"gemini,omitempty" envPrefix:"GEMINI_"`
+	VertexAI *VertexAIConfig `yaml:"vertex_ai,omitempty" envPrefix:"VERTEX_AI_"`
 }
 
 func (c *AnalyzerConfig) validate() error {
@@ -31,6 +32,10 @@ func (c *AnalyzerConfig) validate() error {
 
 	if c.Gemini != nil {
 		return c.Gemini.validate()
+	}
+
+	if c.VertexAI != nil {
+		return c.VertexAI.validate()
 	}
 
 	return errors.New("no valid analyzer backend configuration found")
@@ -50,8 +55,6 @@ func (c *OllamaConfig) validate() error {
 type GeminiConfig struct {
 	ModelName string `yaml:"model_name" env:"mODEL_NAME"`
 	APIKey    string `yaml:"api_key" env:"API_KEY"`
-	ProjectID string `yaml:"project_id" env:"PROJECT_ID"`
-	Location  string `yaml:"location" env:"LOCATION"`
 }
 
 func (c *GeminiConfig) validate() error {
@@ -59,9 +62,26 @@ func (c *GeminiConfig) validate() error {
 		return errors.New("Gemini Model Name is required")
 	}
 	if c.APIKey == "" {
-		if c.ProjectID == "" || c.Location == "" {
-			return errors.New("either API Key or (Project ID and Location) are required for Gemini")
-		}
+		return errors.New("Gemini API Key is required")
+	}
+	return nil
+}
+
+type VertexAIConfig struct {
+	ModelName string `yaml:"model_name" env:"MODEL_NAME"`
+	ProjectID string `yaml:"project_id" env:"PROJECT_ID"`
+	Location  string `yaml:"location" env:"LOCATION"`
+}
+
+func (c *VertexAIConfig) validate() error {
+	if c.ModelName == "" {
+		return errors.New("Vertex AI Model Name is required")
+	}
+	if c.ProjectID == "" {
+		return errors.New("Vertex AI Project ID is required")
+	}
+	if c.Location == "" {
+		return errors.New("Vertex AI Location is required")
 	}
 	return nil
 }

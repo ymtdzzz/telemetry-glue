@@ -26,5 +26,9 @@ The following environment variables can be configured:
 
 - `ANALYZER_GEMINI_MODEL_NAME` - Gemini model name
 - `ANALYZER_GEMINI_API_KEY` - Gemini API key
-- `ANALYZER_GEMINI_PROJECT_ID` - GCP project ID
-- `ANALYZER_GEMINI_LOCATION` - GCP location
+
+#### VertexAI Configuration
+
+- `ANALYZER_VERTEX_AI_MODEL_NAME` - VertexAI model name
+- `ANALYZER_VERTEX_AI_PROJECT_ID` - GCP project ID
+- `ANALYZER_VERTEX_AI_LOCATION` - GCP location

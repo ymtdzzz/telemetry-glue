@@ -33,6 +33,9 @@ func NewLLMBackend(cfg *config.AnalyzerConfig) (LLMBackend, error) {
 	if cfg.Gemini != nil {
 		return NewGemini(context.Background(), cfg.Gemini)
 	}
+	if cfg.VertexAI != nil {
+		return NewVertexAI(context.Background(), cfg.VertexAI)
+	}
 	return nil, errors.New("no valid LLM backend configuration found")
 }
 
