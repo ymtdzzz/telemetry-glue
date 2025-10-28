@@ -22,6 +22,7 @@ func (l *SlackLogger) Log(message string) error {
 		l.channelID,
 		slack.MsgOptionText(message, false),
 		slack.MsgOptionTS(l.threadTS),
+		slack.MsgOptionParse(true),
 	)
 	return err
 }
