@@ -17,8 +17,8 @@ func NewGlue(cfg *config.GlueConfig) *Glue {
 	glue := &Glue{}
 
 	var nrBackend *backend.NewRelicBackend
-	if cfg.NewRelic != nil {
-		nrBackend = backend.NewNewRelicBackend(cfg.NewRelic)
+	if cfg.NewRelic.HasAnyConfig() {
+		nrBackend = backend.NewNewRelicBackend(&cfg.NewRelic)
 	}
 
 	if cfg.SpanBackend == config.BackendTypeNewRelic {

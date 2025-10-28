@@ -9,8 +9,8 @@ import (
 )
 
 type AppConfig struct {
-	Glue     *GlueConfig     `yaml:"glue,omitempty" envPrefix:"GLUE_"`
-	Analyzer *AnalyzerConfig `yaml:"analyzer,omitempty" envPrefix:"ANALYZER_"`
+	Glue     GlueConfig     `yaml:"glue,omitempty" envPrefix:"GLUE_"`
+	Analyzer AnalyzerConfig `yaml:"analyzer,omitempty" envPrefix:"ANALYZER_"`
 }
 
 func LoadConfig(path string) (*AppConfig, error) {
@@ -38,10 +38,10 @@ func LoadConfig(path string) (*AppConfig, error) {
 }
 
 func (c *AppConfig) validate() error {
-	if c.Glue == nil {
+	if !c.Glue.hasAnyConfig() {
 		return errors.New("glue configuration is required")
 	}
-	if c.Analyzer == nil {
+	if !c.Analyzer.hasAnyConfig() {
 		return errors.New("analyzer configuration is required")
 	}
 	if err := c.Glue.validate(); err != nil {

@@ -12,10 +12,14 @@ const (
 )
 
 type AnalyzerConfig struct {
-	Language string          `yaml:"language" env:"LANGUAGE"` // en, ja
-	Ollama   *OllamaConfig   `yaml:"ollama,omitempty" envPrefix:"OLLAMA_"`
-	Gemini   *GeminiConfig   `yaml:"gemini,omitempty" envPrefix:"GEMINI_"`
-	VertexAI *VertexAIConfig `yaml:"vertex_ai,omitempty" envPrefix:"VERTEX_AI_"`
+	Language string         `yaml:"language" env:"LANGUAGE"` // en, ja
+	Ollama   OllamaConfig   `yaml:"ollama,omitempty" envPrefix:"OLLAMA_"`
+	Gemini   GeminiConfig   `yaml:"gemini,omitempty" envPrefix:"GEMINI_"`
+	VertexAI VertexAIConfig `yaml:"vertex_ai,omitempty" envPrefix:"VERTEX_AI_"`
+}
+
+func (c *AnalyzerConfig) hasAnyConfig() bool {
+	return c.Language != "" || c.Ollama.HasAnyConfig() || c.Gemini.HasAnyConfig() || c.VertexAI.HasAnyConfig()
 }
 
 func (c *AnalyzerConfig) validate() error {
@@ -26,15 +30,15 @@ func (c *AnalyzerConfig) validate() error {
 		return errors.New("unsupported language")
 	}
 
-	if c.Ollama != nil {
+	if c.Ollama.HasAnyConfig() {
 		return c.Ollama.validate()
 	}
 
-	if c.Gemini != nil {
+	if c.Gemini.HasAnyConfig() {
 		return c.Gemini.validate()
 	}
 
-	if c.VertexAI != nil {
+	if c.VertexAI.HasAnyConfig() {
 		return c.VertexAI.validate()
 	}
 
@@ -43,6 +47,10 @@ func (c *AnalyzerConfig) validate() error {
 
 type OllamaConfig struct {
 	ModelName string `yaml:"model_name" env:"MODEL_NAME"`
+}
+
+func (c *OllamaConfig) HasAnyConfig() bool {
+	return c.ModelName != ""
 }
 
 func (c *OllamaConfig) validate() error {
@@ -55,6 +63,10 @@ func (c *OllamaConfig) validate() error {
 type GeminiConfig struct {
 	ModelName string `yaml:"model_name" env:"mODEL_NAME"`
 	APIKey    string `yaml:"api_key" env:"API_KEY"`
+}
+
+func (c *GeminiConfig) HasAnyConfig() bool {
+	return c.ModelName != "" || c.APIKey != ""
 }
 
 func (c *GeminiConfig) validate() error {
@@ -71,6 +83,10 @@ type VertexAIConfig struct {
 	ModelName string `yaml:"model_name" env:"MODEL_NAME"`
 	ProjectID string `yaml:"project_id" env:"PROJECT_ID"`
 	Location  string `yaml:"location" env:"LOCATION"`
+}
+
+func (c *VertexAIConfig) HasAnyConfig() bool {
+	return c.ModelName != "" || c.ProjectID != "" || c.Location != ""
 }
 
 func (c *VertexAIConfig) validate() error {

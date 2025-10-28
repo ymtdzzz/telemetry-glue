@@ -27,14 +27,14 @@ type LLMBackend interface {
 
 // NewLLMBackend creates a new LLMBackend based on the provided configuration
 func NewLLMBackend(cfg *config.AnalyzerConfig) (LLMBackend, error) {
-	if cfg.Ollama != nil {
-		return NewOllama(cfg.Ollama)
+	if cfg.Ollama.HasAnyConfig() {
+		return NewOllama(&cfg.Ollama)
 	}
-	if cfg.Gemini != nil {
-		return NewGemini(context.Background(), cfg.Gemini)
+	if cfg.Gemini.HasAnyConfig() {
+		return NewGemini(context.Background(), &cfg.Gemini)
 	}
-	if cfg.VertexAI != nil {
-		return NewVertexAI(context.Background(), cfg.VertexAI)
+	if cfg.VertexAI.HasAnyConfig() {
+		return NewVertexAI(context.Background(), &cfg.VertexAI)
 	}
 	return nil, errors.New("no valid LLM backend configuration found")
 }

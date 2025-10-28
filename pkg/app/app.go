@@ -34,12 +34,12 @@ func NewApp(
 		return nil, err
 	}
 
-	analyzer, err := analyzer.NewAnalyzer(cfg.Analyzer)
+	analyzer, err := analyzer.NewAnalyzer(&cfg.Analyzer)
 	if err != nil {
 		return nil, err
 	}
 
-	glue := glue.NewGlue(cfg.Glue)
+	glue := glue.NewGlue(&cfg.Glue)
 
 	return &App{
 		config:    cfg,
