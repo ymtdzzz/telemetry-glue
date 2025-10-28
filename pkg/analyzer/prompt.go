@@ -56,7 +56,8 @@ Please provide a comprehensive performance analysis including:
 6. **Optimization Recommendations**: Provide specific, actionable recommendations
 
 ## Output Format
-Please structure your response as a markdown report with clear sections and bullet points.
+Please structure your response with clear sections and bullet points.
+But note that it should be printed as plain text, not in markdown format.
 
 ## Telemetry Data
 ### Spans (CSV)
