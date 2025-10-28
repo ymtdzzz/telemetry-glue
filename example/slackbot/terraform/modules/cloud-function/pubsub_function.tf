@@ -12,6 +12,26 @@ resource "google_secret_manager_secret_iam_member" "pubsub_slack_bot_token_acces
   member    = "serviceAccount:${google_service_account.pubsub_function.email}"
 }
 
+resource "google_secret_manager_secret_iam_member" "pubsub_new_relic_api_key_accessor" {
+  project   = var.project_id
+  secret_id = var.secret_ids.new_relic_api_key
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.pubsub_function.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "pubsub_new_relic_account_id_accessor" {
+  project   = var.project_id
+  secret_id = var.secret_ids.new_relic_account_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.pubsub_function.email}"
+}
+
+resource "google_project_iam_member" "pubsub_vertexai_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.pubsub_function.email}"
+}
+
 resource "google_cloudfunctions2_function" "pubsub_function" {
   name        = "${var.environment}-${var.prefix}-slack-analyze"
   location    = var.region
@@ -33,6 +53,28 @@ resource "google_cloudfunctions2_function" "pubsub_function" {
     max_instance_count = 1
     min_instance_count = 0
     ingress_settings   = "ALLOW_INTERNAL_ONLY"
+
+    environment_variables = {
+      GLUE_SPAN_BACKEND             = "newrelic"
+      ANALYZER_LANGUAGE             = "ja"
+      ANALYZER_VERTEX_AI_MODEL_NAME = "gemini-2.5-flash-lite"
+      ANALYZER_VERTEX_AI_PROJECT_ID = var.project_id
+      ANALYZER_VERTEX_AI_LOCATION   = var.region
+    }
+
+    secret_environment_variables {
+      key        = "GLUE_NEW_RELIC_API_KEY"
+      project_id = var.project_id
+      secret     = var.secret_ids.new_relic_api_key
+      version    = "latest"
+    }
+
+    secret_environment_variables {
+      key        = "GLUE_NEW_RELIC_ACCOUNT_ID"
+      project_id = var.project_id
+      secret     = var.secret_ids.new_relic_account_id
+      version    = "latest"
+    }
 
     secret_environment_variables {
       key        = "SLACK_BOT_TOKEN"

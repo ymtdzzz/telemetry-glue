@@ -25,5 +25,7 @@ variable "secret_ids" {
   type = object({
     slack_bot_token          = string
     slack_verification_token = string
+    new_relic_api_key        = string
+    new_relic_account_id     = string
   })
 }
