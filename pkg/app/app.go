@@ -58,29 +58,32 @@ func (a *App) RunDuration(ctx context.Context, queryOnly bool) error {
 	}
 
 	if queryOnly {
-		a.logger.Log("Query-only mode enabled; skipping analysis.")
-		return nil
+		return a.logger.Log("Query-only mode enabled; skipping analysis.")
 	}
 
 	if len(telemetry.Spans) == 0 && len(telemetry.Logs) == 0 {
-		a.logger.Log("No telemetry data found; skipping analysis.")
-		return nil
+		return a.logger.Log("No telemetry data found; skipping analysis.")
 	}
 
 	report, err := a.analyzer.AnalyzeDuration(ctx, telemetry)
 	if err != nil {
-		a.logger.Log("Error during analysis: " + err.Error())
-		return err
+		return a.logger.Log("Error during analysis: " + err.Error())
 	}
 
-	a.logger.Log("Generated Duration Analysis Report:")
-	a.logger.Log(report)
+	if err := a.logger.Log("Generated Duration Analysis Report:"); err != nil {
+		return err
+	}
+	if err := a.logger.Log(report); err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (a *App) executeGlue(ctx context.Context) (*model.Telemetry, error) {
-	a.logger.Log("Executing glue to fetch telemetry data...")
+	if err := a.logger.Log("Executing glue to fetch telemetry data..."); err != nil {
+		return nil, err
+	}
 
 	spanReq := &backend.SearchSpansRequest{
 		TraceID:   a.traceID,
@@ -93,15 +96,21 @@ func (a *App) executeGlue(ctx context.Context) (*model.Telemetry, error) {
 
 	telemetry, err := a.glue.Execute(ctx, a.traceID, spanReq, logReq)
 	if err != nil {
-		a.logger.Log("Error executing glue: " + err.Error())
+		if lerr := a.logger.Log("Error executing glue: " + err.Error()); err != nil {
+			return nil, lerr
+		}
 		return nil, err
 	}
 	tokenCount, err := telemetry.RoughTokenEstimate()
 	if err != nil {
-		a.logger.Log("Error estimating token count: " + err.Error())
+		if lerr := a.logger.Log("Error estimating token count: " + err.Error()); lerr != nil {
+			return nil, lerr
+		}
 		return nil, err
 	}
-	a.logger.Log(fmt.Sprintf("Fetched %d spans and %d logs! Roughly estimated token count: %d", len(telemetry.Spans), len(telemetry.Logs), tokenCount))
+	if err := a.logger.Log(fmt.Sprintf("Fetched %d spans and %d logs! Roughly estimated token count: %d", len(telemetry.Spans), len(telemetry.Logs), tokenCount)); err != nil {
+		return nil, err
+	}
 
 	return telemetry, nil
 }

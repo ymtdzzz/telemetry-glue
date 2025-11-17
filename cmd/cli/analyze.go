@@ -18,7 +18,6 @@ type flags struct {
 	analysisType string
 	configPath   string
 	queryOnly    bool
-	traceID      string
 	startTime    string
 	duration     time.Duration
 }

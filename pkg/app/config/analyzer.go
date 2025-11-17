@@ -55,7 +55,7 @@ func (c *OllamaConfig) HasAnyConfig() bool {
 
 func (c *OllamaConfig) validate() error {
 	if c.ModelName == "" {
-		return errors.New("Ollama Model Name is required")
+		return errors.New("ollama Model Name is required")
 	}
 	return nil
 }
@@ -71,10 +71,10 @@ func (c *GeminiConfig) HasAnyConfig() bool {
 
 func (c *GeminiConfig) validate() error {
 	if c.ModelName == "" {
-		return errors.New("Gemini Model Name is required")
+		return errors.New("gemini Model Name is required")
 	}
 	if c.APIKey == "" {
-		return errors.New("Gemini API Key is required")
+		return errors.New("gemini API Key is required")
 	}
 	return nil
 }
@@ -91,13 +91,13 @@ func (c *VertexAIConfig) HasAnyConfig() bool {
 
 func (c *VertexAIConfig) validate() error {
 	if c.ModelName == "" {
-		return errors.New("Vertex AI Model Name is required")
+		return errors.New("vertex AI Model Name is required")
 	}
 	if c.ProjectID == "" {
-		return errors.New("Vertex AI Project ID is required")
+		return errors.New("vertex AI Project ID is required")
 	}
 	if c.Location == "" {
-		return errors.New("Vertex AI Location is required")
+		return errors.New("vertex AI Location is required")
 	}
 	return nil
 }

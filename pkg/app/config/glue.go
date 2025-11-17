@@ -21,7 +21,7 @@ func (c *GlueConfig) hasAnyConfig() bool {
 func (c *GlueConfig) validate() error {
 	if c.SpanBackend == BackendTypeNewRelic || c.LogBackend == BackendTypeNewRelic {
 		if !c.NewRelic.HasAnyConfig() {
-			return errors.New("New Relic configuration is required for the selected backend")
+			return errors.New("the New Relic configuration is required for the selected backend")
 		}
 		if err := c.NewRelic.validate(); err != nil {
 			return err
@@ -46,10 +46,10 @@ func (c *NewRelicConfig) HasAnyConfig() bool {
 
 func (c *NewRelicConfig) validate() error {
 	if c.APIKey == "" {
-		return errors.New("New Relic API key is required")
+		return errors.New("the New Relic API key is required")
 	}
 	if c.AccountID == 0 {
-		return errors.New("New Relic Account ID is required")
+		return errors.New("the New Relic Account ID is required")
 	}
 	return nil
 }
