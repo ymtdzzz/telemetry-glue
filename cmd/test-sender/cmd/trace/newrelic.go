@@ -47,7 +47,7 @@ func runNewRelicTrace(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	if err := godotenv.Load(); err != nil {
-		return fmt.Errorf("Warning: Could not load .env file: %v", err)
+		return fmt.Errorf("warning: Could not load .env file: %v", err)
 	}
 
 	// Get API key from flag or environment

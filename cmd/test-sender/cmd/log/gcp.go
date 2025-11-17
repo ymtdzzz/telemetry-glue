@@ -33,8 +33,12 @@ func init() {
 	gcpLogCmd.Flags().IntVar(&gcpCount, "count", 1, "Number of log entries to send")
 	gcpLogCmd.Flags().StringVar(&gcpSeverity, "severity", "INFO", "Log severity level (DEFAULT, DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY)")
 
-	gcpLogCmd.MarkFlagRequired("project-id")
-	gcpLogCmd.MarkFlagRequired("trace-id")
+	if err := gcpLogCmd.MarkFlagRequired("project-id"); err != nil {
+		panic(err)
+	}
+	if err := gcpLogCmd.MarkFlagRequired("trace-id"); err != nil {
+		panic(err)
+	}
 }
 
 func runGCPLog(cmd *cobra.Command, args []string) error {
